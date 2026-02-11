@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>S-1792 // SOVEREIGN ARCHITECT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;900&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              gray: {
+                850: '#141414',
+                900: '#0a0a0a',
+                950: '#050505',
+              },
+              brand: {
+                400: '#ff2d2d', // Bright Crimson
+                500: '#cc0000',
+                600: '#990000',
+                900: '#4a0000',
+                950: '#2d0000',
+              }
+            },
+            keyframes: {
+              glitch: {
+                '0%': { transform: 'translate(0)' },
+                '20%': { transform: 'translate(-3px, 3px)' },
+                '40%': { transform: 'translate(-3px, -3px)' },
+                '60%': { transform: 'translate(3px, 3px)' },
+                '80%': { transform: 'translate(3px, -3px)' },
+                '100%': { transform: 'translate(0)' },
+              },
+              flicker: {
+                '0%': { opacity: '0.98' },
+                '5%': { opacity: '0.92' },
+                '10%': { opacity: '0.85' },
+                '15%': { opacity: '0.99' },
+                '100%': { opacity: '1' },
+              },
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'translateY(4px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              }
+            },
+            animation: {
+              glitch: 'glitch 0.15s ease-in-out infinite',
+              flicker: 'flicker 0.08s infinite',
+              fadeIn: 'fadeIn 0.3s ease-out forwards',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #020202;
+        color: #e5e5e5;
+        overflow: hidden;
+      }
+      .scanlines {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: 
+          linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%), 
+          linear-gradient(90deg, rgba(255, 0, 0, 0.08), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.08));
+        background-size: 100% 2px, 3px 100%;
+        pointer-events: none;
+        z-index: 1000;
+        opacity: 0.6;
+      }
+      .scanlines::after {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(18, 16, 16, 0.1);
+        animation: flicker 0.1s infinite;
+      }
+      ::-webkit-scrollbar { width: 4px; }
+      ::-webkit-scrollbar-track { background: #000; }
+      ::-webkit-scrollbar-thumb { background: #222; }
+      ::-webkit-scrollbar-thumb:hover { background: #cc0000; }
+      
+      .redacted {
+        background: #0a0a0a;
+        color: transparent;
+        cursor: crosshair;
+        transition: background 0.1s, color 0.1s;
+        border-radius: 2px;
+        padding: 0 4px;
+      }
+      .redacted:hover {
+        background: #1a0000;
+        color: #ff0000;
+      }
+      
+      kbd {
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 3px;
+        padding: 2px 4px;
+        font-size: 10px;
+        color: #888;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
+    "groq-sdk": "https://esm.sh/groq-sdk@^0.3.0",
+    "uuid": "https://esm.sh/uuid@^13.0.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "groq-sdk/": "https://esm.sh/groq-sdk@^0.37.0/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div class="scanlines"></div>
+    <div id="root"></div>
+  </body>
+</html>

@@ -1,0 +1,5 @@
+{
+  "name": "CodeReceiver",
+  "description": "A developer-focused React application powered by Groq's Llama 3 models designed strictly for generating, explaining, and receiving high-quality code snippets.",
+  "requestFramePermissions": []
+}
