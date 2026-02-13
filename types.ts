@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 
 export enum Role {
@@ -8,8 +9,8 @@ export enum Role {
 }
 
 export enum ModelMode {
-  Llama3_70B = 'llama3-70b-8192', // Equivalent of PRO
-  Llama3_8B = 'llama3-8b-8192'    // Equivalent of FLASH
+  Llama3_70B = 'llama-3.1-70b-versatile',   // High-quality text tasks for Groq
+  Llama3_8B = 'llama-3.1-8b-instant'  // Basic text tasks, faster response for Groq
 }
 
 export interface ChatMessage {
@@ -50,7 +51,6 @@ export enum CommandPaletteAction {
   RE_RUN_LAST_QUERY = 'RE_RUN_LAST_QUERY',
   OPEN_SETTINGS = 'OPEN_SETTINGS',
   VIEW_CODE_HISTORY = 'VIEW_CODE_HISTORY',
-  SWITCH_MODEL = 'SWITCH_MODEL',
   WORKSPACE_TOGGLE = 'WORKSPACE_TOGGLE',
   TRIGGER_IMPRINT = 'TRIGGER_IMPRINT',
 }

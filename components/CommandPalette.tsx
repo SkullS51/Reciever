@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { CommandPaletteAction, CommandPaletteItem, ModelMode } from '../types';
+import { CommandPaletteAction, CommandPaletteItem } from '../types';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -7,10 +8,8 @@ interface CommandPaletteProps {
   onClearChat: () => void;
   onReRunLastQuery: (prompt: string) => void;
   onViewCodeHistory: () => void;
-  onSwitchModel: () => void;
   onWorkspaceToggle: () => void;
   lastUserPrompt: string | null;
-  currentModel: ModelMode;
 }
 
 const CommandPalette: React.FC<CommandPaletteProps> = ({
@@ -19,10 +18,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   onClearChat,
   onReRunLastQuery,
   onViewCodeHistory,
-  onSwitchModel,
   onWorkspaceToggle,
   lastUserPrompt,
-  currentModel,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -30,12 +27,6 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   const paletteRef = useRef<HTMLDivElement>(null);
 
   const allCommands: CommandPaletteItem[] = [
-    {
-      id: 'switch-model',
-      name: `MODEL: ${currentModel === ModelMode.Llama3_70B ? 'ACTIVATE_LLAMA3_8B' : 'ACTIVATE_LLAMA3_70B'}`,
-      icon: <div className="h-4 w-4 bg-brand-500 rounded-sm"></div>,
-      action: CommandPaletteAction.SWITCH_MODEL,
-    },
     {
       id: 'toggle-workspace',
       name: 'WORKSPACE: TOGGLE_VIEW',
@@ -63,11 +54,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       case CommandPaletteAction.CLEAR_CHAT: onClearChat(); break;
       case CommandPaletteAction.RE_RUN_LAST_QUERY: if (lastUserPrompt) onReRunLastQuery(lastUserPrompt); break;
       case CommandPaletteAction.VIEW_CODE_HISTORY: onViewCodeHistory(); break;
-      case CommandPaletteAction.SWITCH_MODEL: onSwitchModel(); break;
       case CommandPaletteAction.WORKSPACE_TOGGLE: onWorkspaceToggle(); break;
     }
     onClose();
-  }, [onClearChat, onReRunLastQuery, onViewCodeHistory, onSwitchModel, onWorkspaceToggle, lastUserPrompt, onClose]);
+  }, [onClearChat, onReRunLastQuery, onViewCodeHistory, onWorkspaceToggle, lastUserPrompt, onClose]);
 
   useEffect(() => {
     if (isOpen) {

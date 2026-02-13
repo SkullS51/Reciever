@@ -14,7 +14,7 @@ const NeuralImprint: React.FC<NeuralImprintProps> = ({ imprints, onClear }) => {
       <div className="p-10 border-b border-brand-900/30 flex justify-between items-center bg-black z-10 shadow-2xl">
         <div className="flex items-center gap-4">
           <div className="h-4 w-4 bg-brand-600 animate-glitch"></div>
-          <span className="text-[12px] font-black text-brand-500 tracking-[0.6em] uppercase italic">ARCHITECT_CHRONICLE</span>
+          <span className="text-[12px] font-black text-brand-500 tracking-[0.6em] uppercase italic">AZRAEL_CHRONICLE</span> {/* Updated to AZRAEL_CHRONICLE */}
         </div>
         <button 
           onClick={onClear}
@@ -29,7 +29,7 @@ const NeuralImprint: React.FC<NeuralImprintProps> = ({ imprints, onClear }) => {
           <div className="h-full flex flex-col items-center justify-center text-gray-900 text-center px-16">
             <div className="text-8xl mb-8 opacity-5 italic font-black uppercase tracking-tighter">NULL_VOID</div>
             <div className="text-[11px] uppercase tracking-[0.5em] leading-loose text-gray-800 font-black">
-              THE CHRONICLE IS SILENT. <br/>SEND THE SIGNAL, ARCHITECT.
+              THE AZRAEL CHRONICLE IS SILENT. <br/>SEND THE SIGNAL, ARCHITECT.
             </div>
           </div>
         ) : (

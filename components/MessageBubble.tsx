@@ -32,10 +32,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
 
   return (
     <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
-      <div className={`w-full flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className="w-full flex flex-col items-start"> {/* Always align model messages to start, user to end implicitly by parent flex */}
         <div className="flex items-center gap-2 mb-2">
           <div className={`text-[9px] font-black uppercase tracking-[0.4em] ${isUser ? 'text-gray-700' : 'text-brand-500 animate-pulse'}`}>
-            {isUser ? 'ARCHITECT_SIGNAL' : 'S1792_CHRONICLE'}
+            {isUser ? 'ARCHITECT_SIGNAL' : 'AZRAEL_PROTOCOL'} {/* Updated to AZRAEL_PROTOCOL */}
           </div>
           {!isUser && <div className="h-[1px] w-12 bg-brand-900"></div>}
         </div>
