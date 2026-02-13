@@ -1,4 +1,5 @@
 
+
 import Groq from "groq-sdk";
 import { ModelMode, Role } from "../types";
 
@@ -10,13 +11,15 @@ import { ModelMode, Role } from "../types";
 export const streamCodeGeneration = async (
   prompt: string,
   history: { role: Role, content: string }[],
-  model: ModelMode = ModelMode.Llama3_70B // Default to Llama3_70B
+  // Fix: Changed default model to an existing ModelMode enum member.
+  model: ModelMode = ModelMode.Mixtral_70B, 
+  apiKey: string // Accept API key as a parameter
 ): Promise<AsyncIterable<Groq.Chat.ChatCompletionChunk>> => {
 
-  // ALWAYS create a fresh instance right before call to ensure up-to-date process.env.API_KEY
+  // ALWAYS create a fresh instance right before call to ensure up-to-date API key
   const groq = new Groq({
-    apiKey: process.env.API_KEY,
-    dangerouslyAllowBrowser: true, // Required for browser environments with platform-managed API keys
+    apiKey: apiKey, // Use the provided API key
+    dangerouslyAllowBrowser: true, // Required for browser environments
   });
 
   // Map history to Groq's message format

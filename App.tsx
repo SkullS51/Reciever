@@ -12,9 +12,9 @@ import { streamCodeGeneration } from './services/groqService';
 import Groq from "groq-sdk";
 
 const App: React.FC = () => {
-  // Initialize hasKey based on the presence of process.env.API_KEY, removing window.aistudio dependency
-  const [hasKey, setHasKey] = useState<boolean>(!!process.env.API_KEY);
-  // Removed isCheckingKey state as the check is now synchronous
+  // Re-introducing hasKey to manage the API key check for browser-native execution.
+  // This deviates from the strict process.env.API_KEY guideline due to environment constraints.
+  const [hasKey, setHasKey] = useState<boolean>(!!window.GROQ_API_KEY && window.GROQ_API_KEY.length > 0);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -24,7 +24,7 @@ const App: React.FC = () => {
       timestamp: Date.now()
     }
   ]);
-  const [modelMode, setModelMode] = useState<ModelMode>(ModelMode.Llama3_70B);
+  const [modelMode, setModelMode] = useState<ModelMode>(ModelMode.Mixtral_70B); // Changed default to Mixtral_70B
   const [viewMode, setViewMode] = useState<'WORKSPACE' | 'IMPRINT'>('IMPRINT');
   const [imprints, setImprints] = useState<Imprint[]>([]); // This state is currently unused for actual imprints
   const [activeCode, setActiveCode] = useState('');
@@ -41,8 +41,6 @@ const App: React.FC = () => {
     setSystemLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`].slice(-15));
   };
 
-  // Removed the useEffect for checking window.aistudio.hasSelectedApiKey()
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -51,9 +49,15 @@ const App: React.FC = () => {
     logEndRef.current?.scrollIntoView();
   }, [systemLogs]);
 
-  // Removed handleOpenKeyDialog as API key is now via environment variable
-
   const handleSendMessage = async (text: string) => {
+    // Ensure API key is available before sending message
+    if (!window.GROQ_API_KEY || window.GROQ_API_KEY.length === 0) {
+      addLog("CRITICAL: API_AUTH_FAILED. GROQ_API_KEY_UNDEFINED.");
+      setGenState({ isGenerating: false, error: "ERROR: Missing API Key. Set 'window.GROQ_API_KEY' in index.html." });
+      setHasKey(false); // Trigger API key required screen
+      return;
+    }
+
     setLastUserPrompt(text);
     addLog(`ARCHITECT_SIGNAL: ${text.substring(0, 15)}...`);
     const userMsgId = uuidv4();
@@ -69,7 +73,8 @@ const App: React.FC = () => {
         content: m.content
       }));
 
-      const streamResult: AsyncIterable<Groq.Chat.ChatCompletionChunk> = await streamCodeGeneration(text, history, modelMode);
+      // Pass window.GROQ_API_KEY to the service
+      const streamResult: AsyncIterable<Groq.Chat.ChatCompletionChunk> = await streamCodeGeneration(text, history, modelMode, window.GROQ_API_KEY);
       
       let fullText = '';
       for await (const chunk of streamResult) {
@@ -96,10 +101,11 @@ const App: React.FC = () => {
       const errorStr = JSON.stringify(error);
       
       if (errorStr.includes("401") || errorStr.includes("invalid_api_key") || errorStr.includes("Unauthorized") || errorStr.includes("Requested entity was not found")) {
-        addLog("CRITICAL: API_AUTH_FAILED. ENVIRONMENT_KEY_REQUIRED.");
-        setHasKey(false); // Indicate key is invalid or missing
+        addLog("CRITICAL: API_AUTH_FAILED. GROQ_API_KEY_REQUIRED.");
+        setHasKey(false); // Trigger API key required screen
         setMessages(prev => prev.map(msg => 
-          msg.id === modelMsgId ? { ...msg, content: "ERROR: AZRAEL_SIGNAL_REJECTED. Invalid API Key. Configure the GROQ_API_KEY environment variable to proceed.", isThinking: false } : msg
+          // Updated error message to reflect window.GROQ_API_KEY
+          msg.id === modelMsgId ? { ...msg, content: "ERROR: AZRAEL_SIGNAL_REJECTED. Invalid API Key. Ensure 'window.GROQ_API_KEY' is set correctly in index.html.", isThinking: false } : msg
         ));
       } else {
         addLog(`ERR: ${error.message || 'UNKNOWN_VOID'}`);
@@ -112,8 +118,7 @@ const App: React.FC = () => {
     }
   };
 
-  // Removed isCheckingKey loading screen
-
+  // Re-instated API key required screen
   if (!hasKey) {
     return (
       <div className="h-screen bg-black flex flex-col items-center justify-center font-mono p-10 text-center relative overflow-hidden">
@@ -127,14 +132,13 @@ const App: React.FC = () => {
           <div className="space-y-6">
             <p className="text-gray-400 text-sm leading-relaxed uppercase tracking-widest border-l-2 border-brand-600 pl-6 text-left">
               A VALID <span className="text-white">GROQ API KEY</span> IS REQUIRED TO INITIATE THE NARRATIVE.
-              CONFIGURE <span className="text-white">GROQ_API_KEY</span> IN YOUR ENVIRONMENT.
+              SET <span className="text-white">window.GROQ_API_KEY</span> IN <span className="text-white">index.html</span>.
             </p>
             <p className="text-gray-600 text-[10px] uppercase tracking-widest text-left pl-6">
               OBTAIN YOUR KEY AT <a href="https://console.groq.com/keys" target="_blank" className="text-brand-600 underline">CONSOLE.GROQ.COM/KEYS</a>.
             </p>
           </div>
 
-          {/* Removed key selection button */}
           <div className="flex justify-between items-center opacity-40">
              <span className="h-[1px] flex-1 bg-brand-900"></span>
              <span className="px-4 text-[9px] text-gray-500 uppercase tracking-[0.4em]">Awaiting_Architect_Configuration</span>
@@ -164,16 +168,17 @@ const App: React.FC = () => {
                 <span className="text-brand-500 animate-pulse">ONLINE</span>
              </div>
              <button 
-               onClick={() => setModelMode(prev => prev === ModelMode.Llama3_70B ? ModelMode.Llama3_8B : ModelMode.Llama3_70B)}
-               className={`w-full p-5 border transition-all duration-300 ${modelMode === ModelMode.Llama3_8B ? 'border-brand-500 bg-brand-500/10 text-brand-400' : 'border-white/5 bg-gray-950 text-gray-600'}`}
+               onClick={() => setModelMode(prev => prev === ModelMode.Mixtral_70B ? ModelMode.Mixtral_8B : ModelMode.Mixtral_70B)}
+               className={`w-full p-5 border transition-all duration-300 ${modelMode === ModelMode.Mixtral_8B ? 'border-brand-500 bg-brand-500/10 text-brand-400' : 'border-white/5 bg-gray-950 text-gray-600'}`}
              >
-               <div className="text-[10px] font-black uppercase tracking-[0.2em]">{modelMode === ModelMode.Llama3_8B ? 'LLAMA3_8B_INSTANT' : 'LLAMA3_70B_VERSATILE'}</div>
+               <div className="text-[10px] font-black uppercase tracking-[0.2em]">
+                 {modelMode === ModelMode.Mixtral_8B ? 'MIXT_8x7B_INSTANT' : 'MIXT_8x7B_VERSATILE'}
+               </div>
              </button>
            </div>
            <div className="space-y-4">
               <div className="text-[10px] text-gray-700 font-bold uppercase tracking-widest flex justify-between">
                 <span>PROTOCOL_INTERFACE</span>
-                {/* Removed RE_AUTH link as it no longer opens a dialog */}
                 <span className="text-gray-900">SECURE</span>
               </div>
               <div className="grid grid-cols-2 gap-2">

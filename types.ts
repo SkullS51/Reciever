@@ -2,6 +2,13 @@
 
 import React from 'react';
 
+// Declare global Window interface augmentation for custom properties
+declare global {
+  interface Window {
+    GROQ_API_KEY?: string;
+  }
+}
+
 export enum Role {
   USER = 'user',
   MODEL = 'model',
@@ -9,8 +16,10 @@ export enum Role {
 }
 
 export enum ModelMode {
-  Llama3_70B = 'llama-3.1-70b-versatile',   // High-quality text tasks for Groq
-  Llama3_8B = 'llama-3.1-8b-instant'  // Basic text tasks, faster response for Groq
+  // Temporary fallback to Mixtral due to recurring Llama 3 model_decommissioned errors.
+  // This ensures core functionality while Groq's Llama 3 model names stabilize for the given API key.
+  Mixtral_70B = 'mixtral-8x7b-32768',   // High-quality text tasks for Groq (now Mixtral)
+  Mixtral_8B = 'mixtral-8x7b-32768'  // Basic text tasks, faster response for Groq (now Mixtral)
 }
 
 export interface ChatMessage {
