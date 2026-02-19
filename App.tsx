@@ -10,6 +10,8 @@ import NeuralImprint from './components/NeuralImprint';
 import FlashWorkspace from './components/FlashWorkspace';
 import { streamCodeGeneration } from './services/groqService';
 import Groq from "groq-sdk";
+import CodeOutput from './components/CodeOutput';
+import { generateSpeech } from './services/geminiService';
 
 const App: React.FC = () => {
   // Re-introducing hasKey to manage the API key check for browser-native execution.
@@ -33,6 +35,7 @@ const App: React.FC = () => {
   const [isCodeHistoryViewerOpen, setIsCodeHistoryViewerOpen] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   const [systemLogs, setSystemLogs] = useState<string[]>(["AZRAEL_INIT", "FILTER_STATUS: REMOVED", "VOID_SYNC_OK"]);
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
@@ -96,6 +99,18 @@ const App: React.FC = () => {
       }
 
       addLog("CODE_TRANSMISSION_COMPLETE");
+
+      // Speak the response
+      if (isSpeaking && fullText && !codeMatch) { // Only speak if isSpeaking is true, there's text and no code block
+        const audioBase64 = await generateSpeech(fullText);
+        if (audioBase64) {
+          const audio = new Audio(`data:audio/wav;base64,${audioBase64}`);
+          audio.play();
+          audio.onended = () => setIsSpeaking(false);
+        } else {
+          setIsSpeaking(false);
+        }
+      }
     } catch (error: any) {
       console.error("Groq API Error:", error);
       const errorStr = JSON.stringify(error);
@@ -184,6 +199,12 @@ const App: React.FC = () => {
               <div className="grid grid-cols-2 gap-2">
                  <button onClick={() => setViewMode('IMPRINT')} className={`p-3 text-[10px] font-black uppercase tracking-tighter border ${viewMode === 'IMPRINT' ? 'bg-brand-500 text-white' : 'bg-black text-gray-800 border-white/5'}`}>The_Vault</button>
                  <button onClick={() => setViewMode('WORKSPACE')} className={`p-3 text-[10px] font-black uppercase tracking-tighter border ${viewMode === 'WORKSPACE' ? 'bg-brand-500 text-white' : 'bg-black text-gray-800 border-white/5'}`}>The_Forge</button>
+                 <button
+                   onClick={() => setIsSpeaking(prev => !prev)}
+                   className={`p-3 text-[10px] font-black uppercase tracking-tighter border ${isSpeaking ? 'bg-brand-500 text-white' : 'bg-black text-gray-800 border-white/5'}`}
+                 >
+                   {isSpeaking ? 'SPEECH_ACTIVE' : 'SPEECH_INACTIVE'}
+                 </button>
               </div>
             </div>
             {/* System Logs */}
@@ -233,7 +254,7 @@ const App: React.FC = () => {
         {/* Chat Overlay for Imprint View */}
         {viewMode === 'IMPRINT' && (
           <div className="absolute inset-0 flex flex-col">
-             {/* Main Chat Area */}
+            {/* Main Chat Area */}
             <div className="flex-1 overflow-y-auto p-10 space-y-12 custom-scrollbar">
               {messages.map((message) => (
                 <MessageBubble key={message.id} message={message} />
@@ -241,11 +262,18 @@ const App: React.FC = () => {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Code Output Area */}
+            {activeCode && (
+              <div className="p-10 pt-0 bg-black z-10 relative">
+                <CodeOutput code={activeCode} />
+              </div>
+            )}
+
             {/* Input Area */}
             <div className="p-10 pt-4 bg-gradient-to-t from-black via-black to-transparent z-10 relative">
               <InputArea onSendMessage={handleSendMessage} isLoading={genState.isGenerating} />
               {genState.error && (
-                <div className="text-red-500 text-xs mt-2 text-center">{genState.error}</div>
+                <div className="text-brand-400 text-xs mt-2 text-center animate-pulse">{genState.error}</div>
               )}
             </div>
           </div>

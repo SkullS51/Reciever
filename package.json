@@ -9,12 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "uuid": "^13.0.0",
+    "@google/genai": "^1.42.0",
+    "groq-sdk": "^0.37.0",
+    "highlight.js": "^11.11.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "groq-sdk": "^0.37.0"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@types/highlight.js": "^9.12.4",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",
