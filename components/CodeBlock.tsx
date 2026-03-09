@@ -8,10 +8,14 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   const [showPreview, setShowPreview] = useState(false);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
-    saveSnippet({ code, language });
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      saveSnippet({ code, language });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("AZRAEL_ERROR: Failed to copy text to clipboard", err);
+    }
   };
 
   const isPreviewable = ['html', 'jsx', 'tsx', 'javascript', 'typescript', 'xml'].includes(language.toLowerCase()) || 

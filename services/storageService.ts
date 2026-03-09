@@ -14,8 +14,28 @@ export const getSnippets = (): CopiedSnippet[] => {
   }
 };
 
+// Circular-safe stringify helper
+const safeStringify = (obj: any): string => {
+  const cache = new Set();
+  return JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (cache.has(value)) {
+        return '[Circular]';
+      }
+      cache.add(value);
+    }
+    return value;
+  });
+};
+
 export const saveSnippet = (newSnippet: { code: string; language: string }): void => {
   try {
+    // Defensive check: ensure inputs are primitives
+    if (typeof newSnippet.code !== 'string' || typeof newSnippet.language !== 'string') {
+      console.warn("AZRAEL_STORAGE_REJECTED: Non-string data detected.");
+      return;
+    }
+
     const currentSnippets = getSnippets();
     const snippetToAdd: CopiedSnippet = {
       id: uuidv4(),
@@ -30,7 +50,7 @@ export const saveSnippet = (newSnippet: { code: string; language: string }): voi
     // Enforce max snippets limit
     const finalSnippets = updatedSnippets.slice(0, MAX_SNIPPETS);
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(finalSnippets));
+    localStorage.setItem(STORAGE_KEY, safeStringify(finalSnippets));
   } catch (error) {
     console.error("Error saving snippet to localStorage:", error);
   }

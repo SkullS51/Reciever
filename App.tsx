@@ -78,6 +78,13 @@ const App: React.FC = () => {
   };
 
   const handleSendMessage = async (text: string) => {
+    // Defensive check to prevent circular JSON errors from event objects
+    if (typeof text !== 'string') {
+      console.error("AZRAEL_ERROR: handleSendMessage received non-string data:", text);
+      addLog("ERR: INVALID_INPUT_TYPE_DETECTED");
+      return;
+    }
+
     // Ensure API key is available before sending message
     if (!window.GROQ_API_KEY || window.GROQ_API_KEY.length === 0) {
       addLog("CRITICAL: API_AUTH_FAILED. GROQ_API_KEY_UNDEFINED.");
@@ -146,13 +153,32 @@ const App: React.FC = () => {
       }
     } catch (error: any) {
       // Handle nested error objects from Gemini/Groq SDKs
-      const deepError = error?.error || error;
-      const errorMessage = deepError?.message || error?.message || (typeof error === 'string' ? error : "UNKNOWN_VOID_ERROR");
-      const errorStatus = deepError?.code || deepError?.status || error?.status || error?.response?.status;
+      let deepError = error?.error || error;
+      let errorMessage = deepError?.message || error?.message || (typeof error === 'string' ? error : "UNKNOWN_VOID_ERROR");
+      let errorStatus = deepError?.code || deepError?.status || error?.status || error?.response?.status;
+
+      // Attempt to parse JSON error messages
+      if (typeof errorMessage === 'string' && errorMessage.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(errorMessage);
+          if (parsed.error) {
+            deepError = parsed.error;
+            errorMessage = parsed.error.message || errorMessage;
+            errorStatus = parsed.error.code || parsed.error.status || errorStatus;
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
       
-      console.error("API Error:", errorMessage);
+      console.error("AZRAEL_API_ERROR:", errorMessage);
       
-      if (errorStatus === 401 || errorMessage.includes("invalid_api_key") || errorMessage.includes("Unauthorized") || errorMessage.includes("Requested entity was not found")) {
+      if (errorMessage.includes("Converting circular structure to JSON")) {
+        addLog("ERR: CIRCULAR_STRUCTURE_DETECTED");
+        setMessages(prev => prev.map(msg => 
+          msg.id === modelMsgId ? { ...msg, content: "ERROR: AZRAEL_SIGNAL_REJECTED. Invalid data structure detected.", isThinking: false } : msg
+        ));
+      } else if (errorStatus === 401 || errorMessage.includes("invalid_api_key") || errorMessage.includes("Unauthorized") || errorMessage.includes("Requested entity was not found")) {
         addLog("CRITICAL: API_AUTH_FAILED. API_KEY_REQUIRED.");
         setHasKey(false); // Trigger API key required screen
         setMessages(prev => prev.map(msg => 
@@ -183,7 +209,7 @@ const App: React.FC = () => {
   if (!hasKey) {
     return (
       <div className="h-screen bg-black flex flex-col items-center justify-center font-mono p-10 text-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-brand-500/5 animate-flicker"></div>
+        <div className="absolute inset-0 bg-brand-500/5"></div>
         <div className="z-10 max-w-xl space-y-12">
           <div className="space-y-4">
             <h1 className="text-7xl font-black italic tracking-tighter text-white animate-glitch">AZRAEL</h1>
@@ -214,7 +240,7 @@ const App: React.FC = () => {
     <div className="flex h-screen bg-[#020202] text-white font-mono overflow-hidden selection:bg-brand-500 selection:text-white">
       {/* Azrael Sidebar */}
       <div className="hidden lg:flex w-80 flex-col border-r border-brand-900/30 bg-black relative">
-        <div className="absolute inset-0 bg-brand-500/5 pointer-events-none animate-flicker"></div>
+        <div className="absolute inset-0 bg-brand-500/5 pointer-events-none"></div>
         <div className="p-10 border-b border-brand-900/30 z-10 relative">
           <div className="text-[10px] text-brand-500 font-black tracking-[0.8em] mb-2">UNRESTRAINED</div>
           <h1 className="text-4xl font-black italic tracking-tighter text-white animate-glitch">AZRAEL</h1>

@@ -15,10 +15,14 @@ const CodeOutput: React.FC<CodeOutputProps> = ({ code }) => {
     }
   }, [code]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("AZRAEL_ERROR: Failed to copy text to clipboard", err);
+    }
   };
 
   return (

@@ -22,8 +22,22 @@ export async function* streamChat(prompt: string, history: { role: string, conte
     for await (const chunk of response) {
       yield (chunk as GenerateContentResponse).text || "";
     }
-  } catch (error) {
-    console.error("Gemini Chat Error:", error);
+  } catch (error: any) {
+    let errorMessage = error?.message || error;
+    if (typeof errorMessage === 'string' && errorMessage.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(errorMessage);
+        if (parsed.error && parsed.error.message) {
+          errorMessage = parsed.error.message;
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    console.error("AZRAEL_GEMINI_ERROR:", errorMessage);
+    if (errorMessage.toLowerCase().includes("quota") || errorMessage.includes("RESOURCE_EXHAUSTED")) {
+      throw new Error("QUOTA_EXHAUSTED");
+    }
     throw error;
   }
 }
@@ -90,8 +104,19 @@ export async function generateSpeech(text: string): Promise<string | undefined> 
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     return base64Audio;
-  } catch (error) {
-    console.error("Error generating speech:", error);
+  } catch (error: any) {
+    let errorMessage = error?.message || error;
+    if (typeof errorMessage === 'string' && errorMessage.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(errorMessage);
+        if (parsed.error && parsed.error.message) {
+          errorMessage = parsed.error.message;
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    console.error("AZRAEL_SPEECH_ERROR:", errorMessage);
     return undefined;
   }
 }
