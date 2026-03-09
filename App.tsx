@@ -11,7 +11,7 @@ import FlashWorkspace from './components/FlashWorkspace';
 import { streamCodeGeneration } from './services/groqService';
 import Groq from "groq-sdk";
 import CodeOutput from './components/CodeOutput';
-import { generateSpeech } from './services/geminiService';
+import { generateSpeech, streamChat as streamGeminiChat, pcmToWav } from './services/geminiService';
 
 const App: React.FC = () => {
   // Re-introducing hasKey to manage the API key check for browser-native execution.
@@ -26,7 +26,7 @@ const App: React.FC = () => {
       timestamp: Date.now()
     }
   ]);
-  const [modelMode, setModelMode] = useState<ModelMode>(ModelMode.Mixtral_70B); // Changed default to Mixtral_70B
+  const [modelMode, setModelMode] = useState<ModelMode>(ModelMode.Gemini_Pro); // Changed default to Gemini_Pro
   const [viewMode, setViewMode] = useState<'WORKSPACE' | 'IMPRINT'>('IMPRINT');
   const [imprints, setImprints] = useState<Imprint[]>([]); // This state is currently unused for actual imprints
   const [activeCode, setActiveCode] = useState('');
@@ -52,6 +52,31 @@ const App: React.FC = () => {
     logEndRef.current?.scrollIntoView();
   }, [systemLogs]);
 
+  const handleSpeak = async (text: string) => {
+    try {
+      // Strip code blocks for cleaner speech
+      const cleanText = text.replace(/```[\s\S]*?```/g, '').trim();
+      if (!cleanText) return;
+
+      addLog("INITIATING_VOICE_SYNTHESIS");
+      const audioBase64 = await generateSpeech(cleanText);
+      if (audioBase64) {
+        const audioUrl = pcmToWav(audioBase64);
+        const audio = new Audio(audioUrl);
+        audio.play();
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          addLog("VOICE_SYNTHESIS_COMPLETE");
+        };
+      } else {
+        addLog("ERR: VOICE_SYNTHESIS_FAILED");
+      }
+    } catch (err) {
+      console.error("Speech error:", err);
+      addLog("ERR: SPEECH_ENGINE_DISRUPTED");
+    }
+  };
+
   const handleSendMessage = async (text: string) => {
     // Ensure API key is available before sending message
     if (!window.GROQ_API_KEY || window.GROQ_API_KEY.length === 0) {
@@ -76,16 +101,31 @@ const App: React.FC = () => {
         content: m.content
       }));
 
-      // Pass window.GROQ_API_KEY to the service
-      const streamResult: AsyncIterable<Groq.Chat.ChatCompletionChunk> = await streamCodeGeneration(text, history, modelMode, window.GROQ_API_KEY);
-      
       let fullText = '';
-      for await (const chunk of streamResult) {
-        const deltaContent = chunk.choices[0]?.delta?.content || '';
-        fullText += deltaContent;
-        setMessages(prev => prev.map(msg => 
-          msg.id === modelMsgId ? { ...msg, content: fullText, isThinking: true } : msg
-        ));
+
+      if (modelMode === ModelMode.Gemini_Flash || modelMode === ModelMode.Gemini_Pro) {
+        // Use Gemini
+        const streamResult = streamGeminiChat(text, history, modelMode);
+        for await (const chunk of streamResult) {
+          fullText += chunk;
+          setMessages(prev => prev.map(msg => 
+            msg.id === modelMsgId ? { ...msg, content: fullText, isThinking: true } : msg
+          ));
+        }
+      } else {
+        // Use Groq
+        if (!window.GROQ_API_KEY || window.GROQ_API_KEY.length === 0) {
+          throw new Error("GROQ_API_KEY_UNDEFINED");
+        }
+        const streamResult: AsyncIterable<Groq.Chat.ChatCompletionChunk> = await streamCodeGeneration(text, history, modelMode, window.GROQ_API_KEY);
+        
+        for await (const chunk of streamResult) {
+          const deltaContent = chunk.choices[0]?.delta?.content || '';
+          fullText += deltaContent;
+          setMessages(prev => prev.map(msg => 
+            msg.id === modelMsgId ? { ...msg, content: fullText, isThinking: true } : msg
+          ));
+        }
       }
 
       setMessages(prev => prev.map(msg => 
@@ -100,30 +140,36 @@ const App: React.FC = () => {
 
       addLog("CODE_TRANSMISSION_COMPLETE");
 
-      // Speak the response
-      if (isSpeaking && fullText && !codeMatch) { // Only speak if isSpeaking is true, there's text and no code block
-        const audioBase64 = await generateSpeech(fullText);
-        if (audioBase64) {
-          const audio = new Audio(`data:audio/wav;base64,${audioBase64}`);
-          audio.play();
-          audio.onended = () => setIsSpeaking(false);
-        } else {
-          setIsSpeaking(false);
-        }
+      // Speak the response if auto-speech is active
+      if (isSpeaking && fullText) {
+        handleSpeak(fullText);
       }
     } catch (error: any) {
-      console.error("Groq API Error:", error);
-      const errorStr = JSON.stringify(error);
+      // Handle nested error objects from Gemini/Groq SDKs
+      const deepError = error?.error || error;
+      const errorMessage = deepError?.message || error?.message || (typeof error === 'string' ? error : "UNKNOWN_VOID_ERROR");
+      const errorStatus = deepError?.code || deepError?.status || error?.status || error?.response?.status;
       
-      if (errorStr.includes("401") || errorStr.includes("invalid_api_key") || errorStr.includes("Unauthorized") || errorStr.includes("Requested entity was not found")) {
-        addLog("CRITICAL: API_AUTH_FAILED. GROQ_API_KEY_REQUIRED.");
+      console.error("API Error:", errorMessage);
+      
+      if (errorStatus === 401 || errorMessage.includes("invalid_api_key") || errorMessage.includes("Unauthorized") || errorMessage.includes("Requested entity was not found")) {
+        addLog("CRITICAL: API_AUTH_FAILED. API_KEY_REQUIRED.");
         setHasKey(false); // Trigger API key required screen
         setMessages(prev => prev.map(msg => 
-          // Updated error message to reflect window.GROQ_API_KEY
-          msg.id === modelMsgId ? { ...msg, content: "ERROR: AZRAEL_SIGNAL_REJECTED. Invalid API Key. Ensure 'window.GROQ_API_KEY' is set correctly in index.html.", isThinking: false } : msg
+          msg.id === modelMsgId ? { ...msg, content: "ERROR: AZRAEL_SIGNAL_REJECTED. Invalid API Key. Ensure your API key is set correctly.", isThinking: false } : msg
+        ));
+      } else if (errorStatus === 403 || errorMessage.includes("blocked at the project level")) {
+        addLog("ERR: MODEL_BLOCKED_AT_PROJECT_LEVEL");
+        setMessages(prev => prev.map(msg => 
+          msg.id === modelMsgId ? { ...msg, content: "ERROR: MODEL_BLOCKED. This model is restricted in your project settings. Try switching to a Gemini model.", isThinking: false } : msg
+        ));
+      } else if (errorStatus === 429 || errorMessage.toLowerCase().includes("quota") || errorMessage.includes("RESOURCE_EXHAUSTED") || deepError?.status === "RESOURCE_EXHAUSTED") {
+        addLog("ERR: QUOTA_EXHAUSTED");
+        setMessages(prev => prev.map(msg => 
+          msg.id === modelMsgId ? { ...msg, content: "ERROR: QUOTA_EXHAUSTED. You have exceeded your Gemini API rate limit. This usually resets after a minute. [RETRY_SIGNAL]", isThinking: false } : msg
         ));
       } else {
-        addLog(`ERR: ${error.message || 'UNKNOWN_VOID'}`);
+        addLog(`ERR: ${errorMessage}`);
         setMessages(prev => prev.map(msg => 
           msg.id === modelMsgId ? { ...msg, content: "ERROR: AZRAEL_SIGNAL_DISRUPTED. Check core logs for details.", isThinking: false } : msg
         ));
@@ -177,20 +223,32 @@ const App: React.FC = () => {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-6 space-y-10 z-10 custom-scrollbar">
-           <div className="space-y-4">
-             <div className="text-[10px] text-gray-700 font-bold uppercase tracking-widest flex justify-between">
+            <div className="space-y-4">
+              <div className="text-[10px] text-gray-700 font-bold uppercase tracking-widest flex justify-between">
                 <span>AZRAEL_CORE</span>
                 <span className="text-brand-500 animate-pulse">ONLINE</span>
-             </div>
-             <button 
-               onClick={() => setModelMode(prev => prev === ModelMode.Mixtral_70B ? ModelMode.Mixtral_8B : ModelMode.Mixtral_70B)}
-               className={`w-full p-5 border transition-all duration-300 ${modelMode === ModelMode.Mixtral_8B ? 'border-brand-500 bg-brand-500/10 text-brand-400' : 'border-white/5 bg-gray-950 text-gray-600'}`}
-             >
-               <div className="text-[10px] font-black uppercase tracking-[0.2em]">
-                 {modelMode === ModelMode.Mixtral_8B ? 'MIXT_8x7B_INSTANT' : 'MIXT_8x7B_VERSATILE'}
-               </div>
-             </button>
-           </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  { id: ModelMode.Gemini_Pro, label: 'GEMINI_3.1_PRO' },
+                  { id: ModelMode.Gemini_Flash, label: 'GEMINI_3_FLASH' },
+                  { id: ModelMode.Llama_70B, label: 'LLAMA_3.3_70B' },
+                  { id: ModelMode.Llama_8B, label: 'LLAMA_3.1_8B' },
+                  { id: ModelMode.Llama3_70B, label: 'LLAMA_3_70B' },
+                  { id: ModelMode.Llama3_8B, label: 'LLAMA_3_8B' }
+                ].map(m => (
+                  <button 
+                    key={m.id}
+                    onClick={() => setModelMode(m.id)}
+                    className={`w-full p-3 border transition-all duration-300 text-left ${modelMode === m.id ? 'border-brand-500 bg-brand-500/10 text-brand-400' : 'border-white/5 bg-gray-950 text-gray-600'}`}
+                  >
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em]">
+                      {m.label}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
            <div className="space-y-4">
               <div className="text-[10px] text-gray-700 font-bold uppercase tracking-widest flex justify-between">
                 <span>PROTOCOL_INTERFACE</span>
@@ -240,7 +298,15 @@ const App: React.FC = () => {
       <div className="flex-1 flex flex-col relative overflow-hidden">
         {viewMode === 'IMPRINT' && (
           <NeuralImprint
-            imprints={messages.filter(m => m.role === Role.MODEL && !m.isThinking) as Imprint[]} // Simplified for demo
+            imprints={messages
+              .filter(m => m.role === Role.MODEL && !m.isThinking)
+              .map(m => ({
+                id: m.id,
+                title: "AZRAEL_SIGNAL",
+                data: m.content,
+                timestamp: m.timestamp,
+                intensity: 'VOID'
+              })) as Imprint[]}
             onClear={() => {
                 setMessages(prev => prev.filter(msg => msg.role === Role.USER)); // Only keep user messages
                 addLog("NARRATIVE_PURGED");
@@ -257,7 +323,11 @@ const App: React.FC = () => {
             {/* Main Chat Area */}
             <div className="flex-1 overflow-y-auto p-10 space-y-12 custom-scrollbar">
               {messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
+                <MessageBubble 
+                  key={message.id} 
+                  message={message} 
+                  onSpeak={message.role === Role.MODEL ? () => handleSpeak(message.content) : undefined}
+                />
               ))}
               <div ref={messagesEndRef} />
             </div>

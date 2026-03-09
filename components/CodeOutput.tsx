@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import hljs from 'highlight.js';
-import 'highlight.js/styles/atom-one-dark.css'; // Using atom-one-dark theme
 
 interface CodeOutputProps {
   code: string;

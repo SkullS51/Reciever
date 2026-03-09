@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { CommandPaletteAction, CommandPaletteItem } from '../types';
 
 interface CommandPaletteProps {
@@ -26,7 +26,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
 
-  const allCommands: CommandPaletteItem[] = [
+  const allCommands: CommandPaletteItem[] = useMemo(() => [
     {
       id: 'toggle-workspace',
       name: 'WORKSPACE: TOGGLE_VIEW',
@@ -45,9 +45,12 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       icon: <div className="h-4 w-4 bg-red-900"></div>,
       action: CommandPaletteAction.CLEAR_CHAT,
     }
-  ];
+  ], []);
 
-  const filteredCommands = allCommands.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredCommands = useMemo(() => 
+    allCommands.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())),
+    [allCommands, searchQuery]
+  );
 
   const executeCommand = useCallback((command: CommandPaletteItem) => {
     switch (command.action) {
@@ -63,7 +66,13 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
     if (isOpen) {
       setSearchQuery('');
       setActiveIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      const timer = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') onClose();
         else if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(p => (p + 1) % filteredCommands.length); }

@@ -12,7 +12,7 @@ export const streamCodeGeneration = async (
   prompt: string,
   history: { role: Role, content: string }[],
   // Fix: Changed default model to an existing ModelMode enum member.
-  model: ModelMode = ModelMode.Mixtral_70B, 
+  model: ModelMode = ModelMode.Llama_70B, 
   apiKey: string // Accept API key as a parameter
 ): Promise<AsyncIterable<Groq.Chat.ChatCompletionChunk>> => {
 

@@ -23,17 +23,32 @@ const CodeHistoryViewer: React.FC<CodeHistoryViewerProps> = ({ isOpen, onClose }
     if (isOpen) {
       fetchSnippets();
       setCopiedSnippetId(null);
-      const timer = setTimeout(() => listRef.current?.focus(), 50); // Focus list for keyboard nav
+      const timer = setTimeout(() => listRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, fetchSnippets]);
 
+  useEffect(() => {
+    if (isOpen) {
       const handleKeyDown = (event: KeyboardEvent) => {
         if (event.key === 'Escape') {
           onClose();
         } else if (event.key === 'ArrowDown') {
           event.preventDefault();
-          setActiveIndex(prev => (prev + 1) % snippets.length);
+          setSnippets(currentSnippets => {
+            if (currentSnippets.length > 0) {
+              setActiveIndex(prev => (prev + 1) % currentSnippets.length);
+            }
+            return currentSnippets;
+          });
         } else if (event.key === 'ArrowUp') {
           event.preventDefault();
-          setActiveIndex(prev => (prev - 1 + snippets.length) % snippets.length);
+          setSnippets(currentSnippets => {
+            if (currentSnippets.length > 0) {
+              setActiveIndex(prev => (prev - 1 + currentSnippets.length) % currentSnippets.length);
+            }
+            return currentSnippets;
+          });
         } else if (event.key === 'Enter') {
           event.preventDefault();
           if (snippets.length > 0) {
@@ -44,11 +59,10 @@ const CodeHistoryViewer: React.FC<CodeHistoryViewerProps> = ({ isOpen, onClose }
 
       window.addEventListener('keydown', handleKeyDown);
       return () => {
-        clearTimeout(timer);
         window.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [isOpen, onClose, fetchSnippets, snippets, activeIndex]);
+  }, [isOpen, onClose, snippets, activeIndex]);
 
   const handleClickOutside = useCallback((event: MouseEvent) => {
     if (viewerRef.current && !viewerRef.current.contains(event.target as Node)) {

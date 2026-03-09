@@ -1,7 +1,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.js'; // Explicitly importing .js for browser module resolution
+import App from './App'; 
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

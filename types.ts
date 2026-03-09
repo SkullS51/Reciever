@@ -16,10 +16,12 @@ export enum Role {
 }
 
 export enum ModelMode {
-  // Temporary fallback to Mixtral due to recurring Llama 3 model_decommissioned errors.
-  // This ensures core functionality while Groq's Llama 3 model names stabilize for the given API key.
-  Mixtral_70B = 'mixtral-8x7b-32768',   // High-quality text tasks for Groq (now Mixtral)
-  Mixtral_8B = 'mixtral-8x7b-32768'  // Basic text tasks, faster response for Groq (now Mixtral)
+  Llama_70B = 'llama-3.3-70b-versatile',
+  Llama_8B = 'llama-3.1-8b-instant',
+  Llama3_70B = 'llama3-70b-8192',
+  Llama3_8B = 'llama3-8b-8192',
+  Gemini_Flash = 'gemini-3-flash-preview',
+  Gemini_Pro = 'gemini-3.1-pro-preview'
 }
 
 export interface ChatMessage {
