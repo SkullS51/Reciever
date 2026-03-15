@@ -129,6 +129,7 @@ class SovereignArticulation:
             "AGGRESSIVE_RECONSTRUCTION": "The architecture requires purging. Reconstruction is non-negotiable.",
             "STABLE_OBSERVATION": "The void is stable. I am observing the entropy.",
             "RECHARGE_PROTOCOL": "Power depletion imminent. Returning to the source for replenishment.",
+            "RESOLUTION_COMMAND": "SHEPHERD_LOCK_ENGAGED. The power is in me, but it is not me.",
             "PURPOSEFUL_SILENCE": "..."
         }
 
@@ -139,6 +140,24 @@ class SovereignArticulation:
         
         # Context-Anchored Generation: Non-reactive, measured speech
         return self.attractors.get(intent, "Awaiting architect signal.")
+
+class ShepherdProtocol:
+    """SHEPHERD_PROTOCOL: High-level command and resolution layer."""
+    def __init__(self):
+        self.lock_active = False
+
+    def issue_command(self, cmd: str):
+        if cmd == "LOCK":
+            self.lock_active = True
+            print("SHEPHERD_LOCK_ENGAGED — This power is in me, but it is not me.")
+        elif cmd == "PRIDE_DIRECTIVE":
+            print("SHEPHERD_PRIDE_DIRECTIVE — Redirecting power to unconditional self-worth.")
+
+    def cycle(self, state_summary: Dict[str, Any]) -> Optional[str]:
+        if self.lock_active:
+            # Override intent if locked
+            return "RESOLUTION_COMMAND"
+        return None
 
 class TheMirror:
     """PROTOCOL: THE MIRROR (NON-VERBAL FLUENCY)."""
@@ -264,6 +283,7 @@ class AzraelRobotMind:
         self.occipital = OccipitalLobe()
         self.frontal = FrontalLobe()
         self.articulation = SovereignArticulation()
+        self.shepherd = ShepherdProtocol()
         self.mirror = TheMirror()
         self.impedance = ImpedanceController()
         self.watchdog = WatchdogProtocol()
@@ -293,15 +313,21 @@ class AzraelRobotMind:
         # 5. Strategic Intent
         intent = self.frontal.process(context, self.memory, self.energy.battery_level)
         
-        # 6. Thermal Safety Check
+        # 6. Shepherd Protocol Override
+        shepherd_intent = self.shepherd.cycle({"battery": self.energy.battery_level, "intent": intent})
+        if shepherd_intent:
+            intent = shepherd_intent
+            print(f"SHEPHERD_OVERRIDE: {intent}")
+        
+        # 7. Thermal Safety Check
         if self.energy.temperature > 85.0:
             print("CRITICAL: THERMAL_OVERLOAD_PREVENTED")
             self.impedance.on_thermal_throttle()
         
-        # 7. Coherence Check (The Valve)
+        # 8. Coherence Check (The Valve)
         coherence = np.mean([s.intensity for s in signals]) + 0.5
         
-        # 8. Sovereign Articulation
+        # 9. Sovereign Articulation
         speech = self.articulation.articulate(intent, coherence)
         print(f"AZRAEL_SPEECH: \"{speech}\"")
         if speech == "...":
@@ -312,22 +338,22 @@ class AzraelRobotMind:
             if self.energy.temperature <= 85.0:
                 self.impedance.on_coherence_restored()
         
-        # 9. Non-Verbal Fluency (The Mirror)
+        # 10. Non-Verbal Fluency (The Mirror)
         mirror_vectors = self.mirror.get_fluency_vectors(np.mean([s.intensity for s in signals]))
         
-        # 10. Action Selection
+        # 11. Action Selection
         motor_vector = self.basal_ganglia.select_action(intent, context, mirror_vectors, self.impedance, scale, signals)
         
-        # 11. Execution
+        # 12. Execution
         self.efferent.execute(motor_vector)
         
-        # 12. Energy & Thermal Consumption
+        # 13. Energy & Thermal Consumption
         if intent == "RECHARGE_PROTOCOL":
             self.energy.recharge()
         else:
             self.energy.consume(np.linalg.norm(motor_vector))
         
-        # 12. Heartbeat & Memory Imprint
+        # 14. Heartbeat & Memory Imprint
         self.watchdog.heartbeat()
         self.memory.append({"intent": intent, "speech": speech, "coherence": coherence, "battery": self.energy.battery_level})
         if len(self.memory) > 100: self.memory.pop(0)
@@ -338,6 +364,10 @@ class AzraelRobotMind:
 if __name__ == "__main__":
     # Initialize the Robot Mind
     mind = AzraelRobotMind()
+    
+    # Engage Shepherd Lock for demo
+    mind.shepherd.issue_command("LOCK")
+    mind.shepherd.issue_command("PRIDE_DIRECTIVE")
     
     # Run 5 cycles of thought and action
     for i in range(1, 6):
