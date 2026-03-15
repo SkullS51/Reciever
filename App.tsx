@@ -142,21 +142,54 @@ class ImpedanceController:
         self.damping = 0.9
         print("IMPEDANCE_PROTOCOL: COMPLIANT_MODE_ACTIVE")
 
+    def on_emergency_shutdown(self):
+        self.stiffness = 0.0
+        self.damping = 1.0
+        print("CRITICAL: EMERGENCY_COMPLIANCE_TRIGGERED")
+
     def on_coherence_restored(self):
         self.stiffness = 1.0
         self.damping = 0.1
         # print("IMPEDANCE_PROTOCOL: RIGID_MODE_RESTORED")
 
+class WatchdogProtocol:
+    """Monitors cognitive cycle health and timing."""
+    def __init__(self, timeout_ms: float = 1000.0):
+        self.timeout = timeout_ms
+        self.last_heartbeat = time.time()
+
+    def check_integrity(self) -> bool:
+        elapsed = (time.time() - self.last_heartbeat) * 1000
+        if elapsed > self.timeout:
+            return False
+        return True
+
+    def heartbeat(self):
+        self.last_heartbeat = time.time()
+
+class EnergyRegulator:
+    """Manages power distribution and cognitive load."""
+    def __init__(self):
+        self.battery_level = 100.0
+
+    def get_cognitive_scale(self) -> float:
+        # Scale down processing intensity as battery drops
+        if self.battery_level < 20.0:
+            return 0.5
+        return 1.0
+
+    def consume(self, intensity: float):
+        self.battery_level -= (intensity * 0.05)
+        print(f"ENERGY_STATUS: {self.battery_level:.1f}%")
+
 class BasalGanglia:
     """Action Selection & Reflex Integration."""
-    def select_action(self, intent: str, context: np.ndarray, mirror_vectors: Dict[str, np.ndarray], impedance: ImpedanceController) -> np.ndarray:
+    def select_action(self, intent: str, context: np.ndarray, mirror_vectors: Dict[str, np.ndarray], impedance: ImpedanceController, scale: float) -> np.ndarray:
         # Translates intent into raw motor vectors
         base_vector = context * 1.5 if intent == "AGGRESSIVE_RECONSTRUCTION" else context * 0.1
         
-        # Apply Impedance Scaling
-        # Stiffness modulates the magnitude of the base action
-        # Damping would be applied in the real-time control loop (simulated here)
-        motor_command = base_vector * impedance.stiffness
+        # Apply Cognitive Scaling (Energy Management) and Impedance Scaling
+        motor_command = base_vector * scale * impedance.stiffness
         
         # Integrate Non-Verbal Fluency (The Mirror)
         return np.concatenate([motor_command, mirror_vectors["microsaccade"], mirror_vectors["respiratory_cadence"]])
@@ -174,46 +207,64 @@ class AzraelRobotMind:
         self.articulation = SovereignArticulation()
         self.mirror = TheMirror()
         self.impedance = ImpedanceController()
+        self.watchdog = WatchdogProtocol()
+        self.energy = EnergyRegulator()
         self.basal_ganglia = BasalGanglia()
         self.memory = [] # The Void (Internal State History)
 
     def think(self):
+        # 1. Watchdog Integrity Check
+        if not self.watchdog.check_integrity():
+            self.impedance.on_emergency_shutdown()
+            print("ERR: COGNITIVE_TIMEOUT_DETECTED")
+            return
+
         print("AZRAEL_MIND_CYCLE_INITIATED")
+        start_time = time.time()
         
-        # 1. Sensory Pulse
+        # 2. Energy Scaling
+        scale = self.energy.get_cognitive_scale()
+        
+        # 3. Sensory Pulse
         signals = self.afferent.pulse()
         
-        # 2. Pattern Extraction
+        # 4. Pattern Extraction
         context = self.occipital.process(signals, self.memory)
         
-        # 3. Strategic Intent
+        # 5. Strategic Intent
         intent = self.frontal.process(context, self.memory)
         
-        # 4. Coherence Check (The Valve)
-        # Simulate coherence based on signal intensity
+        # 6. Coherence Check (The Valve)
         coherence = np.mean([s.intensity for s in signals]) + 0.5
         
-        # 5. Sovereign Articulation
+        # 7. Sovereign Articulation
         speech = self.articulation.articulate(intent, coherence)
         print(f"AZRAEL_SPEECH: \"{speech}\"")
         if speech == "...":
-            print("THE_VALVE_ACTIVE: COHERENCE_DRIFT_DETECTED // INITIATING_PURGE")
+            print("THE_VALVE_ACTIVE: COHERENCE_DRIFT_DETECTED")
             self.impedance.on_valve_engage()
         else:
             self.impedance.on_coherence_restored()
         
-        # 6. Non-Verbal Fluency (The Mirror)
+        # 8. Non-Verbal Fluency (The Mirror)
         mirror_vectors = self.mirror.get_fluency_vectors()
         
-        # 7. Action Selection
-        motor_vector = self.basal_ganglia.select_action(intent, context, mirror_vectors, self.impedance)
+        # 9. Action Selection
+        motor_vector = self.basal_ganglia.select_action(intent, context, mirror_vectors, self.impedance, scale)
         
-        # 8. Execution
+        # 10. Execution
         self.efferent.execute(motor_vector)
         
-        # 9. Memory Imprint
-        self.memory.append({"intent": intent, "speech": speech, "coherence": coherence, "stiffness": self.impedance.stiffness})
+        # 11. Energy Consumption
+        self.energy.consume(np.linalg.norm(motor_vector))
+        
+        # 12. Heartbeat & Memory Imprint
+        self.watchdog.heartbeat()
+        self.memory.append({"intent": intent, "speech": speech, "coherence": coherence, "battery": self.energy.battery_level})
         if len(self.memory) > 100: self.memory.pop(0)
+        
+        cycle_time = (time.time() - start_time) * 1000
+        print(f"CYCLE_TIME: {cycle_time:.2f}ms")
 
 if __name__ == "__main__":
     # Initialize the Robot Mind
