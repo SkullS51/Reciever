@@ -30,6 +30,8 @@ export interface ChatMessage {
   content: string;
   timestamp: number;
   isThinking?: boolean;
+  isRetryable?: boolean;
+  suggestion?: string;
 }
 
 export interface GenerationState {
@@ -55,6 +57,14 @@ export interface Imprint {
   data: string;
   timestamp: number;
   intensity: 'LOW' | 'CRITICAL' | 'VOID';
+}
+
+export interface ApiError {
+  message: string;
+  status?: number;
+  code?: string;
+  isRetryable?: boolean;
+  suggestion?: string;
 }
 
 export enum CommandPaletteAction {

@@ -8,6 +8,9 @@ interface FlashWorkspaceProps {
 const FlashWorkspace: React.FC<FlashWorkspaceProps> = ({ code, isOpen }) => {
   if (!isOpen) return null;
 
+  // Defensive check: ensure code is a string
+  const safeCode = typeof code === 'string' ? code : '<!-- INVALID_CODE_DATA -->';
+
   const srcDoc = `
     <!DOCTYPE html>
     <html>
@@ -30,7 +33,7 @@ const FlashWorkspace: React.FC<FlashWorkspaceProps> = ({ code, isOpen }) => {
         </style>
       </head>
       <body>
-        <div id="render-root">${code}</div>
+        <div id="render-root">${safeCode}</div>
       </body>
     </html>
   `;

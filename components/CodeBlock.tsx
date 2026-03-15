@@ -1,11 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CodeBlockProps } from '../types';
 import { saveSnippet } from '../services/storageService';
 import PreviewPortal from './PreviewPortal';
+import hljs from 'highlight.js';
 
 const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   const [copied, setCopied] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [highlightedCode, setHighlightedCode] = useState('');
+
+  useEffect(() => {
+    if (typeof code === 'string') {
+      try {
+        const result = hljs.highlight(code, { language: language || 'plaintext', ignoreIllegals: true });
+        setHighlightedCode(result.value);
+      } catch (e) {
+        setHighlightedCode(code);
+      }
+    }
+  }, [code, language]);
 
   const handleCopy = async () => {
     try {
@@ -14,7 +27,8 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
       saveSnippet({ code, language });
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error("AZRAEL_ERROR: Failed to copy text to clipboard", err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error("AZRAEL_ERROR: Failed to copy text to clipboard", errorMessage);
     }
   };
 
@@ -54,7 +68,10 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
       </div>
       <div className="p-4 overflow-x-auto">
         <pre className="font-mono text-sm text-gray-400 whitespace-pre-wrap max-h-[500px] overflow-y-auto selection:bg-brand-500 selection:text-white">
-          <code>{code}</code>
+          <code 
+            className={`hljs language-${language}`}
+            dangerouslySetInnerHTML={{ __html: highlightedCode }}
+          />
         </pre>
       </div>
 

@@ -1,5 +1,6 @@
 import { CopiedSnippet } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { safeStringify } from './utils';
 
 const STORAGE_KEY = 'codeReceiver_copiedSnippets';
 const MAX_SNIPPETS = 50; // Limit the number of snippets to store
@@ -9,23 +10,10 @@ export const getSnippets = (): CopiedSnippet[] => {
     const stored = localStorage.getItem(STORAGE_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
-    console.error("Error retrieving snippets from localStorage:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Error retrieving snippets from localStorage:", errorMessage);
     return [];
   }
-};
-
-// Circular-safe stringify helper
-const safeStringify = (obj: any): string => {
-  const cache = new Set();
-  return JSON.stringify(obj, (key, value) => {
-    if (typeof value === 'object' && value !== null) {
-      if (cache.has(value)) {
-        return '[Circular]';
-      }
-      cache.add(value);
-    }
-    return value;
-  });
 };
 
 export const saveSnippet = (newSnippet: { code: string; language: string }): void => {
@@ -52,7 +40,8 @@ export const saveSnippet = (newSnippet: { code: string; language: string }): voi
 
     localStorage.setItem(STORAGE_KEY, safeStringify(finalSnippets));
   } catch (error) {
-    console.error("Error saving snippet to localStorage:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Error saving snippet to localStorage:", errorMessage);
   }
 };
 
@@ -60,6 +49,7 @@ export const clearSnippets = (): void => {
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch (error) {
-    console.error("Error clearing snippets from localStorage:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Error clearing snippets from localStorage:", errorMessage);
   }
 };

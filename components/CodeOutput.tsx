@@ -7,11 +7,24 @@ interface CodeOutputProps {
 
 const CodeOutput: React.FC<CodeOutputProps> = ({ code }) => {
   const [copied, setCopied] = useState(false);
-  const codeRef = React.useRef<HTMLElement>(null);
+  const [highlightedCode, setHighlightedCode] = useState('');
+
+  // Defensive check: ensure code is a string
+  const displayCode = typeof code === 'string' ? code : '[INVALID_CODE_DATA]';
 
   useEffect(() => {
-    if (codeRef.current) {
-      hljs.highlightElement(codeRef.current);
+    if (typeof code === 'string') {
+      try {
+        // Use hljs.highlight instead of highlightElement to avoid passing DOM elements
+        // which can cause circular reference errors in the platform's logger.
+        const result = hljs.highlight(code, { language: 'typescript', ignoreIllegals: true });
+        setHighlightedCode(result.value);
+      } catch (e) {
+        console.error("AZRAEL_ERROR: Highlighting failed", e);
+        setHighlightedCode(code);
+      }
+    } else {
+      setHighlightedCode('[INVALID_CODE_DATA]');
     }
   }, [code]);
 
@@ -21,7 +34,8 @@ const CodeOutput: React.FC<CodeOutputProps> = ({ code }) => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error("AZRAEL_ERROR: Failed to copy text to clipboard", err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error("AZRAEL_ERROR: Failed to copy text to clipboard", errorMessage);
     }
   };
 
@@ -47,9 +61,10 @@ const CodeOutput: React.FC<CodeOutputProps> = ({ code }) => {
         </button>
       </div>
       <pre className="p-4 overflow-x-auto custom-scrollbar text-sm">
-        <code ref={codeRef} className="language-typescript">
-          {code}
-        </code>
+        <code 
+          className="language-typescript hljs"
+          dangerouslySetInnerHTML={{ __html: highlightedCode }}
+        />
       </pre>
     </div>
   );

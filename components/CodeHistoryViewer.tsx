@@ -87,7 +87,8 @@ const CodeHistoryViewer: React.FC<CodeHistoryViewerProps> = ({ isOpen, onClose }
       setCopiedSnippetId(snippet.id);
       setTimeout(() => setCopiedSnippetId(null), 2000);
     } catch (err) {
-      console.error("AZRAEL_ERROR: Failed to copy snippet to clipboard", err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error("AZRAEL_ERROR: Failed to copy snippet to clipboard", errorMessage);
     }
   };
 

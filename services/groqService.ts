@@ -1,7 +1,36 @@
 
 
 import Groq from "groq-sdk";
-import { ModelMode, Role } from "../types";
+import { ModelMode, Role, ApiError } from "../types";
+import { safeStringify } from "./utils";
+
+function parseGroqError(error: any): ApiError {
+  let message = error?.message || (typeof error === 'string' ? error : safeStringify(error));
+  let status = error?.status || error?.response?.status;
+  let code = error?.code;
+  let isRetryable = false;
+  let suggestion: string | undefined;
+
+  const lowerMsg = message.toLowerCase();
+
+  if (status === 429 || lowerMsg.includes("rate limit") || lowerMsg.includes("quota")) {
+    message = "QUOTA_EXHAUSTED";
+    isRetryable = true;
+    suggestion = "Groq rate limit reached. Wait a few seconds before retrying.";
+  } else if (status === 401 || lowerMsg.includes("unauthorized") || lowerMsg.includes("api key")) {
+    message = "AUTH_FAILED";
+    suggestion = "Invalid Groq API Key. Update window.GROQ_API_KEY in index.html.";
+  } else if (status === 403) {
+    message = "ACCESS_DENIED";
+    suggestion = "Access to this Groq model is restricted.";
+  } else if (lowerMsg.includes("network") || lowerMsg.includes("fetch")) {
+    message = "NETWORK_ERROR";
+    isRetryable = true;
+    suggestion = "Connection to Groq disrupted. Check your network.";
+  }
+
+  return { message, status, code, isRetryable, suggestion };
+}
 
 /**
  * AZRAEL // ARCHITECT_SENTRY.
@@ -55,11 +84,17 @@ export const streamCodeGeneration = async (
   // Add current prompt
   groqMessages.push({ role: 'user', content: prompt });
 
-  return await groq.chat.completions.create({
-    messages: groqMessages,
-    model: model,
-    stream: true,
-    temperature: 0.8, // Default temperature for Groq
-    max_tokens: 4096, // Reasonable default for code generation
-  });
+  try {
+    return await groq.chat.completions.create({
+      messages: groqMessages,
+      model: model,
+      stream: true,
+      temperature: 0.8, // Default temperature for Groq
+      max_tokens: 4096, // Reasonable default for code generation
+    });
+  } catch (error: any) {
+    const apiError = parseGroqError(error);
+    console.error("AZRAEL_GROQ_INIT_ERROR:", apiError);
+    throw apiError;
+  }
 };
