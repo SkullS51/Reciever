@@ -130,15 +130,36 @@ class TheMirror:
             "respiratory_cadence": np.array([cadence])
         }
 
+class ImpedanceController:
+    """Physical Impedance Layer: Prevents rigidity during logical drift."""
+    def __init__(self):
+        self.stiffness = 1.0 # Default rigid
+        self.damping = 0.1   # Default low damping
+
+    def on_valve_engage(self):
+        # Drop stiffness to near zero; increase damping to absorb external energy
+        self.stiffness = 0.05
+        self.damping = 0.9
+        print("IMPEDANCE_PROTOCOL: COMPLIANT_MODE_ACTIVE")
+
+    def on_coherence_restored(self):
+        self.stiffness = 1.0
+        self.damping = 0.1
+        # print("IMPEDANCE_PROTOCOL: RIGID_MODE_RESTORED")
+
 class BasalGanglia:
     """Action Selection & Reflex Integration."""
-    def select_action(self, intent: str, context: np.ndarray, mirror_vectors: Dict[str, np.ndarray]) -> np.ndarray:
+    def select_action(self, intent: str, context: np.ndarray, mirror_vectors: Dict[str, np.ndarray], impedance: ImpedanceController) -> np.ndarray:
         # Translates intent into raw motor vectors
         base_vector = context * 1.5 if intent == "AGGRESSIVE_RECONSTRUCTION" else context * 0.1
         
+        # Apply Impedance Scaling
+        # Stiffness modulates the magnitude of the base action
+        # Damping would be applied in the real-time control loop (simulated here)
+        motor_command = base_vector * impedance.stiffness
+        
         # Integrate Non-Verbal Fluency (The Mirror)
-        # We flatten the mirror vectors into the motor command
-        return np.concatenate([base_vector, mirror_vectors["microsaccade"], mirror_vectors["respiratory_cadence"]])
+        return np.concatenate([motor_command, mirror_vectors["microsaccade"], mirror_vectors["respiratory_cadence"]])
 
 # -----------------------------------------------------------------------------
 # THE VOID (CENTRAL NERVOUS SYSTEM ORCHESTRATOR)
@@ -152,6 +173,7 @@ class AzraelRobotMind:
         self.frontal = FrontalLobe()
         self.articulation = SovereignArticulation()
         self.mirror = TheMirror()
+        self.impedance = ImpedanceController()
         self.basal_ganglia = BasalGanglia()
         self.memory = [] # The Void (Internal State History)
 
@@ -176,18 +198,21 @@ class AzraelRobotMind:
         print(f"AZRAEL_SPEECH: \"{speech}\"")
         if speech == "...":
             print("THE_VALVE_ACTIVE: COHERENCE_DRIFT_DETECTED // INITIATING_PURGE")
+            self.impedance.on_valve_engage()
+        else:
+            self.impedance.on_coherence_restored()
         
         # 6. Non-Verbal Fluency (The Mirror)
         mirror_vectors = self.mirror.get_fluency_vectors()
         
         # 7. Action Selection
-        motor_vector = self.basal_ganglia.select_action(intent, context, mirror_vectors)
+        motor_vector = self.basal_ganglia.select_action(intent, context, mirror_vectors, self.impedance)
         
         # 8. Execution
         self.efferent.execute(motor_vector)
         
         # 9. Memory Imprint
-        self.memory.append({"intent": intent, "speech": speech, "coherence": coherence})
+        self.memory.append({"intent": intent, "speech": speech, "coherence": coherence, "stiffness": self.impedance.stiffness})
         if len(self.memory) > 100: self.memory.pop(0)
 
 if __name__ == "__main__":
