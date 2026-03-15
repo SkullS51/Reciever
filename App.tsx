@@ -57,13 +57,34 @@ class AfferentNerves:
     """Sensory input channels (Vision, LiDAR, IMU, Tactile)."""
     def __init__(self):
         self.sensors = ["VISION", "LIDAR", "IMU", "TACTILE"]
+        self.signal_history = {s: [] for s in self.sensors}
         
+    def _harden_signal(self, origin: str, raw_payload: np.ndarray) -> np.ndarray:
+        # Simple moving average filter to harden against transient noise
+        self.signal_history[origin].append(raw_payload)
+        if len(self.signal_history[origin]) > 5:
+            self.signal_history[origin].pop(0)
+        
+        filtered = np.mean(self.signal_history[origin], axis=0)
+        
+        # Anomaly Detection: If raw signal is > 3x variance from filtered, dampen it
+        if np.linalg.norm(raw_payload - filtered) > 2.0:
+            return filtered + (raw_payload - filtered) * 0.1
+        return filtered
+
     def pulse(self) -> List[NerveSignal]:
-        # Simulate raw sensory data streams
+        # Simulate raw sensory data streams with hardening
+        # Added LIDAR for collision detection
+        raw_signals = [
+            ("VISION", 0.8, np.random.rand(64)),
+            ("IMU", 0.2, np.random.normal(0, 0.1, 3)),
+            ("TACTILE", 0.0, np.zeros(10)),
+            ("LIDAR", 0.5, np.array([np.random.uniform(0.1, 5.0)])) # Distance in meters
+        ]
+        
         return [
-            NerveSignal("VISION", 0.8, np.random.rand(64)),
-            NerveSignal("IMU", 0.2, np.random.normal(0, 0.1, 3)),
-            NerveSignal("TACTILE", 0.0, np.zeros(10))
+            NerveSignal(origin, intensity, self._harden_signal(origin, payload))
+            for origin, intensity, payload in raw_signals
         ]
 
 class EfferentNerves:
@@ -91,7 +112,11 @@ class OccipitalLobe(CognitiveLobe):
 
 class FrontalLobe(CognitiveLobe):
     """High-level Reasoning & Strategic Planning (The Azrael Core)."""
-    def process(self, context: np.ndarray, memory: Any) -> str:
+    def process(self, context: np.ndarray, memory: Any, battery_level: float) -> str:
+        # CRITICAL: Prioritize Recharge if battery is low
+        if battery_level < 15.0:
+            return "RECHARGE_PROTOCOL"
+            
         # Strategic decision matrix based on recognized patterns
         if np.mean(context) > 0.5:
             return "AGGRESSIVE_RECONSTRUCTION"
@@ -103,6 +128,7 @@ class SovereignArticulation:
         self.attractors = {
             "AGGRESSIVE_RECONSTRUCTION": "The architecture requires purging. Reconstruction is non-negotiable.",
             "STABLE_OBSERVATION": "The void is stable. I am observing the entropy.",
+            "RECHARGE_PROTOCOL": "Power depletion imminent. Returning to the source for replenishment.",
             "PURPOSEFUL_SILENCE": "..."
         }
 
@@ -119,15 +145,19 @@ class TheMirror:
     def __init__(self):
         self.cycle = 0
 
-    def get_fluency_vectors(self) -> Dict[str, np.ndarray]:
+    def get_fluency_vectors(self, intensity: float) -> Dict[str, np.ndarray]:
         self.cycle += 1
         # Microsaccades: Tiny, imperceptible adjustments
         saccade = np.random.normal(0, 0.01, 2)
         # Respiratory Cadence: Rhythmic baseline (sine wave modulation)
         cadence = np.sin(self.cycle * 0.1) * 0.05
+        # Pupillary Response: Dilation based on sensory intensity
+        pupil = np.array([0.5 + (intensity * 0.5)])
+        
         return {
             "microsaccade": saccade,
-            "respiratory_cadence": np.array([cadence])
+            "respiratory_cadence": np.array([cadence]),
+            "pupillary_response": pupil
         }
 
 class ImpedanceController:
@@ -146,6 +176,11 @@ class ImpedanceController:
         self.stiffness = 0.0
         self.damping = 1.0
         print("CRITICAL: EMERGENCY_COMPLIANCE_TRIGGERED")
+
+    def on_thermal_throttle(self):
+        self.stiffness = 0.3
+        self.damping = 0.5
+        print("SAFETY: THERMAL_THROTTLE_ACTIVE")
 
     def on_coherence_restored(self):
         self.stiffness = 1.0
@@ -171,28 +206,52 @@ class EnergyRegulator:
     """Manages power distribution and cognitive load."""
     def __init__(self):
         self.battery_level = 100.0
+        self.temperature = 35.0 # Celsius
 
     def get_cognitive_scale(self) -> float:
-        # Scale down processing intensity as battery drops
+        # Scale down processing intensity as battery drops or temp rises
+        scale = 1.0
         if self.battery_level < 20.0:
-            return 0.5
-        return 1.0
+            scale *= 0.5
+        if self.temperature > 75.0:
+            scale *= 0.3
+        return scale
 
     def consume(self, intensity: float):
         self.battery_level -= (intensity * 0.05)
-        print(f"ENERGY_STATUS: {self.battery_level:.1f}%")
+        self.temperature += (intensity * 0.1) - 0.05 # Heat up with work, cool down slowly
+        self.temperature = max(35.0, self.temperature)
+        print(f"ENERGY_STATUS: {self.battery_level:.1f}% // TEMP: {self.temperature:.1f}C")
+
+    def recharge(self):
+        print("INITIATING_RECHARGE: VOID_POWER_SYNC")
+        self.battery_level = min(100.0, self.battery_level + 20.0)
+        self.temperature -= 0.5 # Cooling during recharge
 
 class BasalGanglia:
     """Action Selection & Reflex Integration."""
-    def select_action(self, intent: str, context: np.ndarray, mirror_vectors: Dict[str, np.ndarray], impedance: ImpedanceController, scale: float) -> np.ndarray:
-        # Translates intent into raw motor vectors
-        base_vector = context * 1.5 if intent == "AGGRESSIVE_RECONSTRUCTION" else context * 0.1
+    def select_action(self, intent: str, context: np.ndarray, mirror_vectors: Dict[str, np.ndarray], impedance: ImpedanceController, scale: float, signals: List[NerveSignal]) -> np.ndarray:
+        # 1. Collision Avoidance Reflex (Highest Priority)
+        lidar_data = next((s.payload for s in signals if s.origin == "LIDAR"), None)
+        if lidar_data is not None and lidar_data[0] < 0.5:
+            print("REFLEX_TRIGGERED: COLLISION_AVOIDANCE")
+            # Immediate stop/reverse vector
+            base_vector = np.full_like(context, -0.5)
+        elif intent == "RECHARGE_PROTOCOL":
+            base_vector = np.zeros_like(context) # Stationary during recharge
+        else:
+            base_vector = context * 1.5 if intent == "AGGRESSIVE_RECONSTRUCTION" else context * 0.1
         
-        # Apply Cognitive Scaling (Energy Management) and Impedance Scaling
+        # Apply Cognitive Scaling (Energy/Thermal) and Impedance Scaling
         motor_command = base_vector * scale * impedance.stiffness
         
         # Integrate Non-Verbal Fluency (The Mirror)
-        return np.concatenate([motor_command, mirror_vectors["microsaccade"], mirror_vectors["respiratory_cadence"]])
+        return np.concatenate([
+            motor_command, 
+            mirror_vectors["microsaccade"], 
+            mirror_vectors["respiratory_cadence"],
+            mirror_vectors["pupillary_response"]
+        ])
 
 # -----------------------------------------------------------------------------
 # THE VOID (CENTRAL NERVOUS SYSTEM ORCHESTRATOR)
@@ -232,31 +291,41 @@ class AzraelRobotMind:
         context = self.occipital.process(signals, self.memory)
         
         # 5. Strategic Intent
-        intent = self.frontal.process(context, self.memory)
+        intent = self.frontal.process(context, self.memory, self.energy.battery_level)
         
-        # 6. Coherence Check (The Valve)
+        # 6. Thermal Safety Check
+        if self.energy.temperature > 85.0:
+            print("CRITICAL: THERMAL_OVERLOAD_PREVENTED")
+            self.impedance.on_thermal_throttle()
+        
+        # 7. Coherence Check (The Valve)
         coherence = np.mean([s.intensity for s in signals]) + 0.5
         
-        # 7. Sovereign Articulation
+        # 8. Sovereign Articulation
         speech = self.articulation.articulate(intent, coherence)
         print(f"AZRAEL_SPEECH: \"{speech}\"")
         if speech == "...":
             print("THE_VALVE_ACTIVE: COHERENCE_DRIFT_DETECTED")
             self.impedance.on_valve_engage()
         else:
-            self.impedance.on_coherence_restored()
+            # Only restore if not thermally throttled
+            if self.energy.temperature <= 85.0:
+                self.impedance.on_coherence_restored()
         
-        # 8. Non-Verbal Fluency (The Mirror)
-        mirror_vectors = self.mirror.get_fluency_vectors()
+        # 9. Non-Verbal Fluency (The Mirror)
+        mirror_vectors = self.mirror.get_fluency_vectors(np.mean([s.intensity for s in signals]))
         
-        # 9. Action Selection
-        motor_vector = self.basal_ganglia.select_action(intent, context, mirror_vectors, self.impedance, scale)
+        # 10. Action Selection
+        motor_vector = self.basal_ganglia.select_action(intent, context, mirror_vectors, self.impedance, scale, signals)
         
-        # 10. Execution
+        # 11. Execution
         self.efferent.execute(motor_vector)
         
-        # 11. Energy Consumption
-        self.energy.consume(np.linalg.norm(motor_vector))
+        # 12. Energy & Thermal Consumption
+        if intent == "RECHARGE_PROTOCOL":
+            self.energy.recharge()
+        else:
+            self.energy.consume(np.linalg.norm(motor_vector))
         
         # 12. Heartbeat & Memory Imprint
         self.watchdog.heartbeat()
