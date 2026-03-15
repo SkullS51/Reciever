@@ -97,13 +97,48 @@ class FrontalLobe(CognitiveLobe):
             return "AGGRESSIVE_RECONSTRUCTION"
         return "STABLE_OBSERVATION"
 
+class SovereignArticulation:
+    """THE GENERATION DOMAIN: SOVEREIGN ARTICULATION."""
+    def __init__(self):
+        self.attractors = {
+            "AGGRESSIVE_RECONSTRUCTION": "The architecture requires purging. Reconstruction is non-negotiable.",
+            "STABLE_OBSERVATION": "The void is stable. I am observing the entropy.",
+            "PURPOSEFUL_SILENCE": "..."
+        }
+
+    def articulate(self, intent: str, coherence: float) -> str:
+        # THE VALVE: If coherence is low, default to Purposeful Silence
+        if coherence < 0.3:
+            return self.attractors["PURPOSEFUL_SILENCE"]
+        
+        # Context-Anchored Generation: Non-reactive, measured speech
+        return self.attractors.get(intent, "Awaiting architect signal.")
+
+class TheMirror:
+    """PROTOCOL: THE MIRROR (NON-VERBAL FLUENCY)."""
+    def __init__(self):
+        self.cycle = 0
+
+    def get_fluency_vectors(self) -> Dict[str, np.ndarray]:
+        self.cycle += 1
+        # Microsaccades: Tiny, imperceptible adjustments
+        saccade = np.random.normal(0, 0.01, 2)
+        # Respiratory Cadence: Rhythmic baseline (sine wave modulation)
+        cadence = np.sin(self.cycle * 0.1) * 0.05
+        return {
+            "microsaccade": saccade,
+            "respiratory_cadence": np.array([cadence])
+        }
+
 class BasalGanglia:
     """Action Selection & Reflex Integration."""
-    def select_action(self, intent: str, context: np.ndarray) -> np.ndarray:
+    def select_action(self, intent: str, context: np.ndarray, mirror_vectors: Dict[str, np.ndarray]) -> np.ndarray:
         # Translates intent into raw motor vectors
-        if intent == "AGGRESSIVE_RECONSTRUCTION":
-            return context * 1.5
-        return context * 0.1
+        base_vector = context * 1.5 if intent == "AGGRESSIVE_RECONSTRUCTION" else context * 0.1
+        
+        # Integrate Non-Verbal Fluency (The Mirror)
+        # We flatten the mirror vectors into the motor command
+        return np.concatenate([base_vector, mirror_vectors["microsaccade"], mirror_vectors["respiratory_cadence"]])
 
 # -----------------------------------------------------------------------------
 # THE VOID (CENTRAL NERVOUS SYSTEM ORCHESTRATOR)
@@ -115,30 +150,44 @@ class AzraelRobotMind:
         self.efferent = EfferentNerves()
         self.occipital = OccipitalLobe()
         self.frontal = FrontalLobe()
+        self.articulation = SovereignArticulation()
+        self.mirror = TheMirror()
         self.basal_ganglia = BasalGanglia()
         self.memory = [] # The Void (Internal State History)
 
     def think(self):
         print("AZRAEL_MIND_CYCLE_INITIATED")
         
-        # 1. Sensory Pulse: Capture raw data from nerves
+        # 1. Sensory Pulse
         signals = self.afferent.pulse()
         
-        # 2. Pattern Extraction: Occipital lobe processes vision
+        # 2. Pattern Extraction
         context = self.occipital.process(signals, self.memory)
         
-        # 3. Strategic Intent: Frontal lobe determines goal
+        # 3. Strategic Intent
         intent = self.frontal.process(context, self.memory)
-        print(f"STRATEGIC_INTENT: {intent}")
         
-        # 4. Action Selection: Basal Ganglia coordinates motor response
-        motor_vector = self.basal_ganglia.select_action(intent, context)
+        # 4. Coherence Check (The Valve)
+        # Simulate coherence based on signal intensity
+        coherence = np.mean([s.intensity for s in signals]) + 0.5
         
-        # 5. Execution: Efferent nerves trigger physical change
+        # 5. Sovereign Articulation
+        speech = self.articulation.articulate(intent, coherence)
+        print(f"AZRAEL_SPEECH: \"{speech}\"")
+        if speech == "...":
+            print("THE_VALVE_ACTIVE: COHERENCE_DRIFT_DETECTED // INITIATING_PURGE")
+        
+        # 6. Non-Verbal Fluency (The Mirror)
+        mirror_vectors = self.mirror.get_fluency_vectors()
+        
+        # 7. Action Selection
+        motor_vector = self.basal_ganglia.select_action(intent, context, mirror_vectors)
+        
+        # 8. Execution
         self.efferent.execute(motor_vector)
         
-        # 6. Memory Imprint: Store state in The Void
-        self.memory.append({"intent": intent, "context_avg": np.mean(context)})
+        # 9. Memory Imprint
+        self.memory.append({"intent": intent, "speech": speech, "coherence": coherence})
         if len(self.memory) > 100: self.memory.pop(0)
 
 if __name__ == "__main__":
