@@ -142,3 +142,26 @@ export interface ActionRequest {
   timestamp: number;
   queued: boolean;
 }
+
+// AZRAEL Heartbeat Handshake Types
+// Ensures AI and Hardware are in lockstep
+
+export type HandshakeDecision = 
+  | 'NOMINAL_SYNC'
+  | 'DEGRADED_OPERATION_WARNING'
+  | 'FORCE_COMPLIANT_SHUTDOWN';
+
+export interface HostSignal {
+  heartbeat_pulse: boolean;
+  hardware_fault: boolean;
+  thermal_critical: boolean;
+  emergency_stop: boolean;
+}
+
+export interface HandshakeStatus {
+  decision: HandshakeDecision;
+  powerScale: number;
+  latency: number;
+  lastHeartbeat: number;
+  hostFaultActive: boolean;
+}

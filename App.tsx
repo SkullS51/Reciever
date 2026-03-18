@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { ChatMessage, Role, GenerationState, Imprint, ModelMode, ApiError, ActionRequest } from './types';
+import { ChatMessage, Role, GenerationState, Imprint, ModelMode, ApiError, ActionRequest, HostSignal } from './types';
 import MessageBubble from './components/MessageBubble';
 import InputArea from './components/InputArea';
 import CommandPalette from './components/CommandPalette';
@@ -15,6 +15,7 @@ import { generateSpeech, streamChat as streamGeminiChat, pcmToWav } from './serv
 import { safeString } from './services/utils';
 import { useFailOperational } from './src/hooks/useFailOperational';
 import { SafetyMonitor } from './src/components/SafetyMonitor';
+import { useHeartbeatHandshake } from './src/hooks/useHeartbeatHandshake';
 
 const App: React.FC = () => {
   // Re-introducing hasKey to manage the API key check for browser-native execution.
@@ -385,12 +386,24 @@ if __name__ == "__main__":
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [stability, setStability] = useState(100);
   const [isDrifting, setIsDrifting] = useState(false);
+  const [hostSignal, setHostSignal] = useState<HostSignal>({
+    heartbeat_pulse: true,
+    hardware_fault: false,
+    thermal_critical: false,
+    emergency_stop: false
+  });
 
   const { status: safetyStatus, processAction, updateDrift } = useFailOperational({
     softLimitThreshold: 0.7,
     hardLimitThreshold: 0.9,
     violationTime: 8000
   });
+
+  const { status: handshake, sync: syncHandshake } = useHeartbeatHandshake();
+
+  useEffect(() => {
+    syncHandshake(hostSignal, 1.0 - (safetyStatus.accumulatedStress * 0.5));
+  }, [hostSignal, safetyStatus.accumulatedStress, syncHandshake]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
@@ -432,6 +445,28 @@ if __name__ == "__main__":
 
     return () => clearInterval(interval);
   }, [isDrifting, updateDrift]);
+
+  // Host PLC Heartbeat Simulation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHostSignal(prev => ({
+        ...prev,
+        heartbeat_pulse: !prev.heartbeat_pulse, // Toggle heartbeat
+        // Randomly simulate a hardware fault (very rare)
+        hardware_fault: Math.random() > 0.995 ? !prev.hardware_fault : prev.hardware_fault
+      }));
+    }, 500); // 500ms heartbeat cycle
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handle Handshake Shutdown
+  useEffect(() => {
+    if (handshake.decision === 'FORCE_COMPLIANT_SHUTDOWN') {
+      addLog("CRITICAL: FORCE_COMPLIANT_SHUTDOWN_TRIGGERED");
+      // In a real app, this would trigger actual hardware shutdown
+    }
+  }, [handshake.decision]);
 
   const simulateRobotAction = () => {
     const action: ActionRequest = {
@@ -729,7 +764,7 @@ if __name__ == "__main__":
               <div className="text-[10px] text-gray-700 font-bold uppercase tracking-widest flex justify-between">
                 <span>FAIL_OPERATIONAL_SYSTEM</span>
               </div>
-              <SafetyMonitor status={safetyStatus} />
+              <SafetyMonitor status={safetyStatus} handshake={handshake} />
               <div className="grid grid-cols-2 gap-2">
                 <button 
                   onClick={simulateRobotAction}

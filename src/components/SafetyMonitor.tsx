@@ -11,10 +11,11 @@ import {
   Unlock, 
   RefreshCw 
 } from 'lucide-react';
-import { SafetyStatus, OperationalMode } from '../../types';
+import { SafetyStatus, OperationalMode, HandshakeStatus } from '../../types';
 
 interface SafetyMonitorProps {
   status: SafetyStatus;
+  handshake?: HandshakeStatus;
   onReset?: () => void;
 }
 
@@ -27,7 +28,13 @@ const MODE_COLORS: Record<OperationalMode, string> = {
   EMERGENCY: 'text-purple-400 border-purple-400/30 bg-purple-400/10',
 };
 
-export const SafetyMonitor: React.FC<SafetyMonitorProps> = ({ status, onReset }) => {
+const HANDSHAKE_COLORS: Record<string, string> = {
+  NOMINAL_SYNC: 'text-emerald-400',
+  DEGRADED_OPERATION_WARNING: 'text-yellow-400',
+  FORCE_COMPLIANT_SHUTDOWN: 'text-red-400 animate-pulse',
+};
+
+export const SafetyMonitor: React.FC<SafetyMonitorProps> = ({ status, handshake, onReset }) => {
   const { mode, cognitiveScale, stiffnessScale, violations, driftTrajectory, accumulatedStress } = status;
 
   return (
@@ -89,6 +96,37 @@ export const SafetyMonitor: React.FC<SafetyMonitorProps> = ({ status, onReset })
           />
         </div>
       </div>
+
+      {handshake && (
+        <div className="mb-4 p-2 rounded border border-zinc-800 bg-black/40 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-zinc-400">
+              <Zap className="w-3 h-3" />
+              <span className="uppercase text-[10px] font-bold">Host Handshake</span>
+            </div>
+            <span className={`text-[10px] font-bold ${HANDSHAKE_COLORS[handshake.decision]}`}>
+              {handshake.decision}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-[9px]">
+            <div className="flex justify-between text-zinc-500">
+              <span>LATENCY</span>
+              <span className={handshake.latency > 0.1 ? 'text-red-400' : 'text-zinc-300'}>
+                {(handshake.latency * 1000).toFixed(0)}ms
+              </span>
+            </div>
+            <div className="flex justify-between text-zinc-500">
+              <span>POWER_SCALE</span>
+              <span className="text-zinc-300">{(handshake.powerScale * 100).toFixed(0)}%</span>
+            </div>
+          </div>
+          {handshake.hostFaultActive && (
+            <div className="flex items-center gap-1 text-red-400 text-[9px] font-bold uppercase animate-pulse">
+              <AlertTriangle className="w-2 h-2" /> Hardware Fault Detected
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="border-t border-zinc-800 pt-4 space-y-3">
         <div className="flex items-center gap-2 text-zinc-400">
