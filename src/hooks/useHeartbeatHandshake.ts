@@ -4,12 +4,14 @@ import { HostSignal, HandshakeStatus, HandshakeDecision } from '../../types';
 interface HandshakeConfig {
   watchdogTimeout: number; // seconds
   latencyThreshold: number; // seconds
+  warningThreshold: number; // seconds
   minCoherence: number;
 }
 
 const DEFAULT_CONFIG: HandshakeConfig = {
   watchdogTimeout: 0.05,
-  latencyThreshold: 0.1,
+  latencyThreshold: 0.15,
+  warningThreshold: 0.08,
   minCoherence: 0.4
 };
 
@@ -44,9 +46,15 @@ export const useHeartbeatHandshake = (config: Partial<HandshakeConfig> = {}) => 
     if (hostFaultActive || latency > fullConfig.latencyThreshold) {
       decision = 'FORCE_COMPLIANT_SHUTDOWN';
       powerScale = 0.0;
+    } else if (latency > fullConfig.warningThreshold) {
+      decision = 'LATENCY_WARNING';
+      // Linear scaling between warning and threshold
+      const range = fullConfig.latencyThreshold - fullConfig.warningThreshold;
+      const over = latency - fullConfig.warningThreshold;
+      powerScale = Math.max(0.1, 1.0 - (over / range));
     } else if (azraelCoherence < fullConfig.minCoherence) {
       decision = 'DEGRADED_OPERATION_WARNING';
-      powerScale = 0.3;
+      powerScale = Math.max(0.1, azraelCoherence);
     }
 
     setStatus({
@@ -72,6 +80,16 @@ export const useHeartbeatHandshake = (config: Partial<HandshakeConfig> = {}) => 
           latency,
           decision: 'FORCE_COMPLIANT_SHUTDOWN',
           powerScale: 0.0
+        }));
+      } else if (latency > fullConfig.warningThreshold) {
+        const range = fullConfig.latencyThreshold - fullConfig.warningThreshold;
+        const over = latency - fullConfig.warningThreshold;
+        const powerScale = Math.max(0.1, 1.0 - (over / range));
+        setStatus(prev => ({
+          ...prev,
+          latency,
+          decision: 'LATENCY_WARNING',
+          powerScale
         }));
       } else {
         setStatus(prev => ({ ...prev, latency }));

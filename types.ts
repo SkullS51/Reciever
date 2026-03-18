@@ -88,6 +88,7 @@ export interface CommandPaletteItem {
 export type OperationalMode = 
   | 'NOMINAL'      // 100% cognitive, 100% stiffness - Full capability
   | 'DEGRADED'     // 70% cognitive, 60% stiffness - Reduced planning
+  | 'RESTRICTED'   // 55% cognitive, 45% stiffness - Limited autonomy
   | 'CONSTRAINED'  // 40% cognitive, 30% stiffness - Minimal control
   | 'SURVIVAL'     // 10% cognitive, 10% stiffness - Reactive only
   | 'SAFE_HOLD'    // 0% cognitive, 0% stiffness - Monitored drift
@@ -148,6 +149,7 @@ export interface ActionRequest {
 
 export type HandshakeDecision = 
   | 'NOMINAL_SYNC'
+  | 'LATENCY_WARNING'
   | 'DEGRADED_OPERATION_WARNING'
   | 'FORCE_COMPLIANT_SHUTDOWN';
 

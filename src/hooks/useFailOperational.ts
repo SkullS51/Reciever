@@ -10,12 +10,12 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 const DEFAULT_CONFIG: FailOperationalConfig = {
-  softLimitThreshold: 0.8,
-  hardLimitThreshold: 1.0,
+  softLimitThreshold: 0.7,
+  hardLimitThreshold: 0.9,
   violationDecayTime: 5000,
-  stressDecayRate: 0.01,
+  stressDecayRate: 0.005,
   maxDriftTime: 10,
-  recoveryCooldown: 10000,
+  recoveryCooldown: 8000,
   violationTime: 5000
 };
 
@@ -40,9 +40,10 @@ export const useFailOperational = (config: Partial<FailOperationalConfig> = {}) 
     const hardViolations = violations.filter(v => v.severity === 'hard').length;
     const softViolations = violations.filter(v => v.severity === 'soft').length;
 
-    if (hardViolations > 2 || stress > 0.9) return 'EMERGENCY';
-    if (hardViolations > 0 || stress > 0.7) return 'SURVIVAL';
-    if (softViolations > 3 || stress > 0.5) return 'CONSTRAINED';
+    if (hardViolations > 2 || stress > 0.95) return 'EMERGENCY';
+    if (hardViolations > 0 || stress > 0.8) return 'SURVIVAL';
+    if (softViolations > 4 || stress > 0.6) return 'CONSTRAINED';
+    if (softViolations > 2 || stress > 0.45) return 'RESTRICTED';
     if (softViolations > 0 || stress > 0.3) return 'DEGRADED';
     
     return 'NOMINAL';
@@ -53,6 +54,7 @@ export const useFailOperational = (config: Partial<FailOperationalConfig> = {}) 
     switch (mode) {
       case 'NOMINAL': return { cognitive: 1.0, stiffness: 1.0 };
       case 'DEGRADED': return { cognitive: 0.7, stiffness: 0.6 };
+      case 'RESTRICTED': return { cognitive: 0.55, stiffness: 0.45 };
       case 'CONSTRAINED': return { cognitive: 0.4, stiffness: 0.3 };
       case 'SURVIVAL': return { cognitive: 0.1, stiffness: 0.1 };
       case 'SAFE_HOLD': return { cognitive: 0.0, stiffness: 0.0 };

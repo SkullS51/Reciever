@@ -449,12 +449,19 @@ if __name__ == "__main__":
   // Host PLC Heartbeat Simulation
   useEffect(() => {
     const interval = setInterval(() => {
-      setHostSignal(prev => ({
-        ...prev,
-        heartbeat_pulse: !prev.heartbeat_pulse, // Toggle heartbeat
-        // Randomly simulate a hardware fault (very rare)
-        hardware_fault: Math.random() > 0.995 ? !prev.hardware_fault : prev.hardware_fault
-      }));
+      setHostSignal(prev => {
+        const rand = Math.random();
+        return {
+          ...prev,
+          heartbeat_pulse: !prev.heartbeat_pulse, // Toggle heartbeat
+          // Randomly simulate a hardware fault (very rare)
+          hardware_fault: rand > 0.998 ? !prev.hardware_fault : prev.hardware_fault,
+          // Simulate thermal critical (rare)
+          thermal_critical: rand > 0.995 && rand < 0.998 ? !prev.thermal_critical : prev.thermal_critical,
+          // Simulate emergency stop (extremely rare)
+          emergency_stop: rand > 0.999 ? !prev.emergency_stop : prev.emergency_stop
+        };
+      });
     }, 500); // 500ms heartbeat cycle
 
     return () => clearInterval(interval);
@@ -539,6 +546,12 @@ if __name__ == "__main__":
       return;
     }
 
+    // Check handshake status before proceeding
+    if (handshake.decision === 'FORCE_COMPLIANT_SHUTDOWN') {
+      addLog("SIGNAL_REJECTED: HARDWARE_SHUTDOWN_ACTIVE");
+      return;
+    }
+
     // Ensure API key is available before sending message
     if (!window.GROQ_API_KEY || window.GROQ_API_KEY.length === 0) {
       addLog("CRITICAL: API_AUTH_FAILED. GROQ_API_KEY_UNDEFINED.");
@@ -568,6 +581,11 @@ if __name__ == "__main__":
         // Use Gemini
         const streamResult = streamGeminiChat(text, history, modelMode);
         for await (const chunk of streamResult) {
+          // Apply power scale latency/jitter
+          if (handshake.powerScale < 1.0) {
+            await new Promise(resolve => setTimeout(resolve, (1.0 - handshake.powerScale) * 200));
+          }
+
           fullText += chunk;
           setMessages(prev => prev.map(msg => 
             msg.id === modelMsgId ? { ...msg, content: fullText, isThinking: true } : msg
@@ -586,6 +604,11 @@ if __name__ == "__main__":
         const streamResult: AsyncIterable<Groq.Chat.ChatCompletionChunk> = await streamCodeGeneration(text, history, modelMode, window.GROQ_API_KEY);
         
         for await (const chunk of streamResult) {
+          // Apply power scale latency/jitter
+          if (handshake.powerScale < 1.0) {
+            await new Promise(resolve => setTimeout(resolve, (1.0 - handshake.powerScale) * 150));
+          }
+
           const deltaContent = chunk.choices[0]?.delta?.content || '';
           fullText += deltaContent;
           setMessages(prev => prev.map(msg => 
