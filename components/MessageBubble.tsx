@@ -12,50 +12,45 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onSpeak, onRetry
   const isUser = message.role === Role.USER;
 
   const renderContent = (content: string) => {
-    const parts = [];
-    let remaining = content;
-    
-    while (remaining.length > 0) {
-      const codeBlockStart = remaining.indexOf('```');
-      
-      if (codeBlockStart === -1) {
-        parts.push({ type: 'text', content: remaining });
-        break;
+    const codeBlockRegex = /```(\w+)?\s*\n?([\s\S]*?)(?:```|$)/g;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = codeBlockRegex.exec(content)) !== null) {
+      // Add text before the code block
+      if (match.index > lastIndex) {
+        const textContent = content.substring(lastIndex, match.index);
+        if (textContent.trim()) {
+          parts.push(
+            <p key={`text-${lastIndex}`} className={`whitespace-pre-wrap mb-4 leading-relaxed text-sm font-mono transition-all duration-300 ${!isUser ? 'redacted border-l-2 border-brand-500 pl-4 py-3 hover:text-white' : 'text-gray-500 opacity-80'}`}>
+              {textContent}
+            </p>
+          );
+        }
       }
-      
-      if (codeBlockStart > 0) {
-        parts.push({ type: 'text', content: remaining.substring(0, codeBlockStart) });
-      }
-      
-      remaining = remaining.substring(codeBlockStart);
-      const nextCodeBlock = remaining.indexOf('```', 3);
-      
-      if (nextCodeBlock === -1) {
-        parts.push({ type: 'code', content: remaining });
-        break;
-      } else {
-        parts.push({ type: 'code', content: remaining.substring(0, nextCodeBlock + 3) });
-        remaining = remaining.substring(nextCodeBlock + 3);
-      }
+
+      // Add the code block
+      const language = match[1] || 'text';
+      const code = match[2] || '';
+      parts.push(<CodeBlock key={`code-${match.index}`} language={language} code={code.trim()} />);
+
+      lastIndex = codeBlockRegex.lastIndex;
     }
-    
-    return parts.map((part, index) => {
-      if (part.type === 'code') {
-        const codeContent = part.content;
-        const match = codeContent.match(/^```(\w+)?\n?([\s\S]*?)(```)?$/);
-        const language = (match && match[1]) ? match[1] : '';
-        const code = (match && match[2]) ? match[2] : codeContent.slice(3);
-        
-        return <CodeBlock key={index} language={language || 'text'} code={code.trim()} />;
-      } else {
-        if (!part.content.trim()) return null;
-        return (
-          <p key={index} className={`whitespace-pre-wrap mb-4 leading-relaxed text-sm font-mono transition-all duration-300 ${!isUser ? 'redacted border-l-2 border-brand-500 pl-4 py-3 hover:text-white' : 'text-gray-500 opacity-80'}`}>
-            {part.content}
+
+    // Add remaining text after the last code block
+    if (lastIndex < content.length) {
+      const remainingText = content.substring(lastIndex);
+      if (remainingText.trim()) {
+        parts.push(
+          <p key={`text-${lastIndex}`} className={`whitespace-pre-wrap mb-4 leading-relaxed text-sm font-mono transition-all duration-300 ${!isUser ? 'redacted border-l-2 border-brand-500 pl-4 py-3 hover:text-white' : 'text-gray-500 opacity-80'}`}>
+            {remainingText}
           </p>
         );
       }
-    });
+    }
+
+    return parts;
   };
 
   return (

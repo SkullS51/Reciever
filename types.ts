@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 
 // Declare global Window interface augmentation for custom properties
@@ -81,4 +80,65 @@ export interface CommandPaletteItem {
   name: string;
   icon: React.ReactNode;
   action: CommandPaletteAction;
+}
+
+// AZRAEL Fail-Operational Safety System Types
+// Philosophy: "Drift rather than burn out"
+
+export type OperationalMode = 
+  | 'NOMINAL'      // 100% cognitive, 100% stiffness - Full capability
+  | 'DEGRADED'     // 70% cognitive, 60% stiffness - Reduced planning
+  | 'CONSTRAINED'  // 40% cognitive, 30% stiffness - Minimal control
+  | 'SURVIVAL'     // 10% cognitive, 10% stiffness - Reactive only
+  | 'SAFE_HOLD'    // 0% cognitive, 0% stiffness - Monitored drift
+  | 'EMERGENCY';   // 5% cognitive, 20% stiffness - Minimal recovery
+
+export interface ConstraintViolation {
+  id: string;
+  type: 'magnitude' | 'energy' | 'thermal' | 'temporal';
+  severity: 'soft' | 'hard';
+  value: number;
+  limit: number;
+  timestamp: number;
+  decayRate: number; // violations fade over time if not repeated
+}
+
+export interface DriftTrajectory {
+  currentPosition: number[];
+  velocity: number[];
+  predictedPath: number[][];
+  timeToBoundary: number; // seconds until unrecoverable
+  recoverable: boolean;
+  interventionRequired: boolean;
+  minimalInterventionForce: number[];
+}
+
+export interface SafetyStatus {
+  mode: OperationalMode;
+  cognitiveScale: number; // 0.0 to 1.0
+  stiffnessScale: number; // 0.0 to 1.0
+  violations: ConstraintViolation[];
+  driftTrajectory: DriftTrajectory | null;
+  lastStableTimestamp: number;
+  accumulatedStress: number; // 0.0 to 1.0, decays over time
+  isOperational: boolean;
+}
+
+export interface FailOperationalConfig {
+  softLimitThreshold: number;     // e.g., 0.8 - start warning
+  hardLimitThreshold: number;     // e.g., 1.0 - immediate action
+  violationDecayTime: number;     // ms before soft violations fade
+  stressDecayRate: number;        // how fast accumulated stress fades
+  maxDriftTime: number;           // seconds before drift becomes unrecoverable
+  recoveryCooldown: number;       // ms before mode can improve
+  violationTime: number;          // ms before soft violations fade
+}
+
+export interface ActionRequest {
+  id: string;
+  magnitude: number;
+  energyCost: number;
+  target: number[];
+  timestamp: number;
+  queued: boolean;
 }

@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { ChatMessage, Role, GenerationState, Imprint, ModelMode, ApiError } from './types';
+import { ChatMessage, Role, GenerationState, Imprint, ModelMode, ApiError, ActionRequest } from './types';
 import MessageBubble from './components/MessageBubble';
 import InputArea from './components/InputArea';
 import CommandPalette from './components/CommandPalette';
@@ -13,6 +13,8 @@ import Groq from "groq-sdk";
 import CodeOutput from './components/CodeOutput';
 import { generateSpeech, streamChat as streamGeminiChat, pcmToWav } from './services/geminiService';
 import { safeString } from './services/utils';
+import { useFailOperational } from './src/hooks/useFailOperational';
+import { SafetyMonitor } from './src/components/SafetyMonitor';
 
 const App: React.FC = () => {
   // Re-introducing hasKey to manage the API key check for browser-native execution.
@@ -382,6 +384,13 @@ if __name__ == "__main__":
   const [systemLogs, setSystemLogs] = useState<string[]>(["AZRAEL_INIT", "FILTER_STATUS: REMOVED", "VOID_SYNC_OK"]);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [stability, setStability] = useState(100);
+  const [isDrifting, setIsDrifting] = useState(false);
+
+  const { status: safetyStatus, processAction, updateDrift } = useFailOperational({
+    softLimitThreshold: 0.7,
+    hardLimitThreshold: 0.9,
+    violationTime: 8000
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
@@ -399,6 +408,50 @@ if __name__ == "__main__":
   useEffect(() => {
     logEndRef.current?.scrollIntoView();
   }, [systemLogs]);
+
+  // Drift Simulation
+  useEffect(() => {
+    if (!isDrifting) return;
+
+    const interval = setInterval(() => {
+      const timeToBoundary = Math.max(0, 10 - (Math.random() * 5));
+      updateDrift({
+        currentPosition: [Math.random(), Math.random()],
+        velocity: [Math.random() * 0.1, Math.random() * 0.1],
+        predictedPath: [[0, 0], [1, 1]],
+        timeToBoundary,
+        recoverable: timeToBoundary > 2,
+        interventionRequired: timeToBoundary < 1,
+        minimalInterventionForce: [0.1, 0.1]
+      });
+      
+      if (timeToBoundary < 1) {
+        addLog("CRITICAL_DRIFT: INTERVENTION_REQUIRED");
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [isDrifting, updateDrift]);
+
+  const simulateRobotAction = () => {
+    const action: ActionRequest = {
+      id: uuidv4(),
+      magnitude: Math.random() * 10,
+      energyCost: Math.random() * 5,
+      target: [Math.random(), Math.random()],
+      timestamp: Date.now(),
+      queued: false
+    };
+
+    const limits = { magnitude: 8, energy: 4 };
+    const isSafe = processAction(action, limits);
+    
+    if (isSafe) {
+      addLog(`ACTION_EXECUTED: MAG=${action.magnitude.toFixed(1)}`);
+    } else {
+      addLog(`ACTION_REJECTED: SAFETY_VIOLATION`);
+    }
+  };
 
   const handleSpeak = async (text: string) => {
     try {
@@ -669,6 +722,28 @@ if __name__ == "__main__":
                     ))}
                     <div ref={logEndRef} />
                 </div>
+            </div>
+
+            {/* Fail-Operational Safety Monitor */}
+            <div className="space-y-4">
+              <div className="text-[10px] text-gray-700 font-bold uppercase tracking-widest flex justify-between">
+                <span>FAIL_OPERATIONAL_SYSTEM</span>
+              </div>
+              <SafetyMonitor status={safetyStatus} />
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={simulateRobotAction}
+                  className="p-2 text-[8px] font-bold uppercase border border-brand-900/30 hover:bg-brand-500/10 text-zinc-500 hover:text-brand-400 transition-all"
+                >
+                  Simulate Action
+                </button>
+                <button 
+                  onClick={() => setIsDrifting(!isDrifting)}
+                  className={`p-2 text-[8px] font-bold uppercase border transition-all ${isDrifting ? 'border-brand-500 bg-brand-500/20 text-brand-400' : 'border-brand-900/30 text-zinc-500'}`}
+                >
+                  {isDrifting ? 'Stop Drift' : 'Simulate Drift'}
+                </button>
+              </div>
             </div>
            {/* Command Palette Trigger */}
             <div className="space-y-4">
