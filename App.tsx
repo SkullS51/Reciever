@@ -16,8 +16,16 @@ import { safeString } from './services/utils';
 import { useFailOperational } from './src/hooks/useFailOperational';
 import { SafetyMonitor } from './src/components/SafetyMonitor';
 import { useHeartbeatHandshake } from './src/hooks/useHeartbeatHandshake';
+import { mountVercelToolbar } from '@vercel/toolbar';
 
 const App: React.FC = () => {
+  useEffect(() => {
+    // Mount Vercel Toolbar in development or if explicitly requested
+    const cleanup = mountVercelToolbar();
+    return () => {
+      if (typeof cleanup === 'function') cleanup();
+    };
+  }, []);
   // Re-introducing hasKey to manage the API key check for browser-native execution.
   // This deviates from the strict process.env.API_KEY guideline due to environment constraints.
   const [hasKey, setHasKey] = useState<boolean>(!!window.GROQ_API_KEY && window.GROQ_API_KEY.length > 0);
