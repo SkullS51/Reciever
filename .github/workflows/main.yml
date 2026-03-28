@@ -30,15 +30,16 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Shepherd Dependencies
+      - name: Install Full Shepherd Stack
         run: |
           python -m pip install --upgrade pip
-          pip install fastapi uvicorn psutil requests
+          pip install fastapi uvicorn psutil requests pandas
 
       - name: Initialize Shepherd Protocol
         run: |
           python shepherd.py --mode monitor --intensity 100
           echo "Shepherd active. Swarm integrity verified."
+
 
 
 
