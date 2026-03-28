@@ -1,0 +1,37 @@
+name: Shepherd Protocol Vigil
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js (Vite Core)
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+
+    - name: Install Frontend Dependencies
+      run: npm install
+
+    - name: Setup Python (Shepherd Core)
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Initialize Shepherd Protocol
+      run: |
+        python shepherd.py --mode monitor --intensity 100
+        echo "Shepherd active. Swarm integrity verified."
+
+    - name: Build Production Glass
+      run: npm run build
