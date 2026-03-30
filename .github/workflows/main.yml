@@ -4,7 +4,6 @@ on:
   push:
     branches: [ "main" ]
   schedule:
-    # This triggers the pulse every 2 hours, 24/7
     - cron: "0 */2 * * *"
 
 jobs:
@@ -32,14 +31,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install fastapi uvicorn psutil requests pandas numpy
 
-      name: Initialize Global Scaling Protocol
+      - name: Initialize Global Scaling Protocol
         run: |
-          # The logic calculates intensity based on the hour to simulate global expansion
-          HOUR=$(date +%H)
+          # The Merlin Fix: Force Base-10 to stop the '09' error
+          RAW_HOUR=$(date +%H)
+          HOUR=$((10#$RAW_HOUR))
           INTENSITY=$((HOUR * 100 + 100))
+          
           echo "Scaling Intensity to: $INTENSITY"
           python shepherd.py --mode global --intensity $INTENSITY
-          echo "Shepherd expansion verified. Swarm integrity holding at Scale $
+          echo "Shepherd expansion verified. Swarm integrity holding at Scale $INTENSITY."
+
 
 
 
