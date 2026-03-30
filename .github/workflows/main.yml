@@ -32,15 +32,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install fastapi uvicorn psutil requests pandas numpy
 
-      - name: Initialize Global Scaling Protocol
+      name: Initialize Global Scaling Protocol
         run: |
           # The logic calculates intensity based on the hour to simulate global expansion
           HOUR=$(date +%H)
           INTENSITY=$((HOUR * 100 + 100))
           echo "Scaling Intensity to: $INTENSITY"
           python shepherd.py --mode global --intensity $INTENSITY
-          echo "Shepherd expansion verified. Swarm integrity holding at Scale $INTENSITY."
-
+          echo "Shepherd expansion verified. Swarm integrity holding at Scale $
 
 
 
