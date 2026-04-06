@@ -13,7 +13,13 @@ License: GPL-3.0 (Dual-License Option for Proprietary Hardware)
 ​Invisible Sovereignty: Without the physical hardware key sititng in the Architect’s hand, the cloud data is non-existent to the network. It cannot be hacked because it cannot be seen.<div align="center">
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
-
+CLOUD-BRIDGE SPECIFICATIONS
+​Primary Node: ESP32-WROOM (Kinetic Validation)
+​Data Memory: Firebase Real-Time Database / Firestore
+​Authentication: Non-Linear Hardware-Handshake (5-and-3 Method)
+​Anti-Scam Protocol: ng_node_alpha / titan_prime_3100
+​Latency: <15ms Sovereign Loopback
+   
 # Run and deploy your AI Studio app
 
 This contains everything you need to run your app locally.
