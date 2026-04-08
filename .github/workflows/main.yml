@@ -1,10 +1,46 @@
-      - name: Initialize Global Scaling Protocol (OMEGA OVERDRIVE)
+Name: Shepherd Protocol Global Scaling Vigil
+
+on:
+  push:
+    branches: [ "main" ]
+  schedule:
+    - cron: "0 */2 * * *"
+
+jobs:
+  global-scale-test:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24 (The Glass)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup Python (The Iron)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Full Shepherd Stack
         run: |
-          # ARCHITECT OVERRIDE: Shattering the 2400 Clock-Cap
+          python -m pip install --upgrade pip
+          pip install fastapi uvicorn psutil requests pandas numpy
+
+            - name: Initialize Global Scaling Protocol (OMEGA OVERDRIVE)
+        run: |
+          # ARCHITECT OVERRIDE: Shattering the Merlin Clock-Cap
           INTENSITY=7200
+          
           echo "Scaling Intensity to: $INTENSITY"
+          # Ensure shepherd.py is ready for the triple-load
           python shepherd.py --mode global --intensity $INTENSITY
           echo "Shepherd expansion verified. Swarm integrity holding at Scale $INTENSITY."
+
 
 
 
