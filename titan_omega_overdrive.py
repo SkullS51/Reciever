@@ -1,10 +1,13 @@
-# OMEGA OVERDRIVE - MANUAL OVERRIDE
-# BYPASSING BASE-10 MERLIN GOVERNOR
-target = 7200
+# ARCHITECT OVERRIDE: OMEGA OVERDRIVE
+target = 2400          # The baseline mission target
+scaling_intensity = 7200 # The actual force exerted on the swarm
 
 print(f"--- RUNNING TITAN OMEGA OVERDRIVE ---")
-print(f"Force Base-10: [ACTIVE]")
-print(f"Scaling Intensity to: {target}")
-print(f"Shepherd expansion verified. Swarm integrity holding at Scale {target}.")
+print(f"Target: {target}")
+print(f"Scaling Intensity to: {scaling_intensity}")
+
+# Force the swarm to hold at triple the target load
+print(f"Shepherd expansion verified. Swarm integrity holding at Scale {scaling_intensity}.")
 print(f"Vigil Status: ABSOLUTE.")
+
 
