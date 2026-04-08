@@ -1,12 +1,15 @@
       - name: Initialize Global Scaling Protocol (OMEGA OVERDRIVE)
         run: |
-          # ARCHITECT OVERRIDE: Shattering the Merlin Clock-Cap
+          # ARCHITECT OVERRIDE: Shattering the 2400 Clock-Cap
+          # We no longer calculate based on RAW_HOUR. 
+          # We dictate the load.
           INTENSITY=7200
           
           echo "Scaling Intensity to: $INTENSITY"
-          # Ensure shepherd.py is ready for the triple-load
+          # Calling the iron with the new force
           python shepherd.py --mode global --intensity $INTENSITY
           echo "Shepherd expansion verified. Swarm integrity holding at Scale $INTENSITY."
+
 
 
 
