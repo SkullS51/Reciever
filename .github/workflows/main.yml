@@ -1,7 +1,4 @@
-Name: Shepherd Protocol Global Scaling Vigil
-
-on:
-  push:
+push:
     branches: [ "main" ]
   schedule:
     - cron: "0 */2 * * *"
