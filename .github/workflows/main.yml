@@ -1,6 +1,6 @@
 push:
-    branches: [ "main" ]
-  schedule:
+branches: [ "main" ]
+ schedule:
     - cron: "0 */2 * * *"
 
 jobs:
